@@ -1,0 +1,71 @@
+{
+  "manifest_version": 3,
+  "name": "优课学习助手",
+  "version": "1.1.0",
+  "description": "课程连播、可选测验提交、闯关章节跳转与成绩总览。",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://api.deepseek.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://uooc.net.cn/*",
+        "https://*.uooc.net.cn/*",
+        "http://uooc.net.cn/*",
+        "http://*.uooc.net.cn/*"
+      ],
+      "js": [
+        "videojs-compat.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://uooc.net.cn/*",
+        "https://*.uooc.net.cn/*",
+        "http://uooc.net.cn/*",
+        "http://*.uooc.net.cn/*"
+      ],
+      "js": [
+        "settings.js",
+        "course-parser.js",
+        "course-reader.js",
+        "uooc-adapter.js",
+        "quiz-submit.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "optional_permissions": [
+    "cookies"
+  ],
+  "optional_host_permissions": [
+    "https://www.uooc.net.cn/*",
+    "https://uooc.net.cn/*"
+  ]
+}
