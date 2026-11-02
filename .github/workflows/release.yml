@@ -28,6 +28,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $existing = gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --json isDraft 2>$null
+          if ($LASTEXITCODE -eq 0 -and -not ($existing | ConvertFrom-Json).isDraft) {
+            Write-Output 'Release already published; preserve its existing assets.'
+            exit 0
+          }
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
             gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --title "优课学习助手 $env:RELEASE_TAG" --notes-file RELEASE_NOTES.md
