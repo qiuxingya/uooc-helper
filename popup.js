@@ -7,3 +7,5 @@ chrome.runtime.sendMessage({type:'overview'}).then(response=>{
  if(!data.recent.length){const p=document.createElement('p');p.textContent='开始连播后，这里会记录最近学习的位置。';el('recent').append(p);}
  for(const item of data.recent){const u=new URL(item.url);if(!/^https?:$/.test(u.protocol)||!/(^|\.)uooc\.net\.cn$/i.test(u.hostname)||u.username||u.password||u.port)continue;const section=document.createElement('section'),title=document.createElement('strong'),chapter=document.createElement('small'),time=document.createElement('p'),link=document.createElement('a');section.className='course';title.textContent=item.title;chapter.textContent=item.chapter;time.textContent='上次位置 '+Math.floor(item.seconds/60)+':'+String(Math.floor(item.seconds)%60).padStart(2,'0')+' · '+new Date(item.time).toLocaleDateString();link.textContent='返回学习 ↗';link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';section.append(title,chapter,time,link);el('recent').append(section);}
 }).catch(error=>el('status').textContent=error.message);
+
+document.querySelector('#updates').onclick=()=>chrome.tabs.create({url:chrome.runtime.getURL('options.html')+'#updates'});

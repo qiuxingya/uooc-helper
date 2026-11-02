@@ -13,7 +13,7 @@
   if(!Object.keys(bucket.courses||{}).length)delete cache.accounts[account];
  }return cache;}
  async function cache(){const data=prune((await chrome.storage.local.get('gradeCache')).gradeCache);return data;}
- async function note(event,code,count=0){const {gradeAudit=[]}=await chrome.storage.local.get('gradeAudit');gradeAudit.push({time:Date.now(),version:'1.1.0',event,code,count});await chrome.storage.local.set({gradeAudit:gradeAudit.filter(x=>x.time>Date.now()-KEEP).slice(-200)});}
+ async function note(event,code,count=0){const {gradeAudit=[]}=await chrome.storage.local.get('gradeAudit');gradeAudit.push({time:Date.now(),version:'1.2.0',event,code,count});await chrome.storage.local.set({gradeAudit:gradeAudit.filter(x=>x.time>Date.now()-KEEP).slice(-200)});}
  async function close(job){await chrome.alarms.clear(ALARM);if(Number.isInteger(job?.tabId)){try{await chrome.tabs.sendMessage(job.tabId,{type:'gradeAbort'});}catch{}try{await chrome.tabs.remove(job.tabId);}catch{}}}
  async function finish(job,status,error=null){job.status=status;job.error=error;job.pending=null;job.finishedAt=Date.now();job.found=job.courses?.length||0;job.failed=Object.values(job.results||{}).filter(r=>r.error).length;job.results={};job.courses=[];job.account=null;await save(job);await close(job);await note('refresh',error||status,job.done||0);}
  async function invalidateAccount(){await chrome.storage.session.remove('gradeAccount');}

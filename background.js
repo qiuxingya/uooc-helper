@@ -1,4 +1,4 @@
-if(typeof importScripts==='function')importScripts('settings.js','activity.js','grades-worker.js','login-session.js');
+if(typeof importScripts==='function')importScripts('settings.js','activity.js','grades-worker.js','login-session.js','updater.js');
 const ENDPOINT = 'https://api.deepseek.com/chat/completions';
 const ready = Promise.all([
   chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}),
@@ -122,9 +122,11 @@ async function testConnection(message){
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(!message||typeof message.type!=='string')return;
   const own=typeof sender.id==='string'&&sender.id===chrome.runtime.id;
-  const role=own&&sender.url===chrome.runtime.getURL('grades.html')?'grades':own&&sender.url===chrome.runtime.getURL('options.html')?'options':own&&sender.url===chrome.runtime.getURL('popup.html')?'popup':own&&sender.tab&&(!sender.frameId)&&/^https?:\/\/([a-z0-9-]+\.)*uooc\.net\.cn\//i.test(sender.url||'')?'course':null;
+  const pageUrl=String(sender.url||'').split(/[?#]/)[0];
+  const role=own&&pageUrl===chrome.runtime.getURL('grades.html')?'grades':own&&pageUrl===chrome.runtime.getURL('options.html')?'options':own&&pageUrl===chrome.runtime.getURL('popup.html')?'popup':own&&sender.tab&&(!sender.frameId)&&/^https?:\/\/([a-z0-9-]+\.)*uooc\.net\.cn\//i.test(sender.url||'')?'course':null;
   let task;
-  if(globalThis.UoocLogin?.types.has(message.type)){if(!role)return;task=UoocLogin.handle(message,sender,role);}
+  if(globalThis.UoocUpdater?.types.has(message.type)){if(!role)return;task=UoocUpdater.handle(message,sender,role);}
+  else if(globalThis.UoocLogin?.types.has(message.type)){if(!role)return;task=UoocLogin.handle(message,sender,role);}
   else if(globalThis.UoocGrades?.types.has(message.type)){if(!role)return;task=UoocGrades.handle(message,sender,role);}
   else if(globalThis.UoocActivity?.types.has(message.type)){
     if(!role)return;task=(async()=>{if(role==='course'&&await globalThis.UoocGrades?.isScanTab(sender.tab.id))throw Error('课程成绩刷新页只读');return UoocActivity.handle(message,sender,role);})();
@@ -144,6 +146,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
 if(globalThis.UoocActivity)ready.then(()=>UoocActivity.restore()).catch(()=>{});
 if(globalThis.UoocGrades)ready.then(()=>UoocGrades.restore()).catch(()=>{});
 if(globalThis.UoocLogin)ready.then(()=>UoocLogin.restore()).catch(()=>{});
+if(globalThis.UoocUpdater)ready.then(()=>UoocUpdater.restore()).catch(()=>{});
 async function solve(q,tabId) {
   if (!q || typeof q.text !== 'string' || !q.text.trim() || q.text.length > 12000) throw Error('题目格式不完整');
   const blank=q.type==='blank';
