@@ -28,26 +28,33 @@
 
 ## 页面预览
 
-### 2.0.0 学习通成绩总览
+### 学习通页面预览
 
-下图来自隔离浏览器中的模拟课程，用于展示学习通的章节任务点、综合成绩和分项权重，展示零分与未公布总评的区分。
+以下为 2.0.0 学习通适配版的隔离测试截图，课程与成绩均为模拟数据；窄屏截图展示响应式布局，不代表移动端浏览器已支持安装扩展。
 
-<p align="center"><img src="docs/screenshots/chaoxing-grades-desktop.png" width="1000" alt="2.0.0 学习通成绩总览演示，数据为模拟课程"></p>
+**课程与成绩总览**：章节任务点完成度、综合成绩和分项权重。
 
-以下截图来自 **1.2.0 插件实际页面与独立测试页面**。课程、成绩、时长和最近位置均为演示数据，不代表真实课程记分；API Key 输入框未配置真实密钥。
+<p align="center"><img src="docs/screenshots/chaoxing-grades-desktop.png" width="1000" alt="学习通课程与成绩总览，模拟数据"></p>
 
-### 课程悬浮面板
+**窄屏成绩与登录保持设置**：两个平台的登录保持独立配置。
 
-倍速、定时、自动提交开关和课程总览入口集中在面板中，收起后以圆形悬浮球显示。
+<p align="center"><img src="docs/screenshots/chaoxing-grades-mobile.png" width="320" alt="学习通成绩总览窄屏预览"> <img src="docs/screenshots/chaoxing-login-mobile.png" width="320" alt="学习通与优课独立登录保持设置预览"></p>
 
-<p align="center"><img src="docs/screenshots/panel.png" width="1000" alt="优课学习助手 1.2.0 悬浮面板，包含倍速、定时和自动提交开关"></p>
+### 优课 UOOC 页面预览
 
-<details>
-<summary>查看收纳后的悬浮球</summary>
+以下沿用 1.2.0 的界面演示截图，保留图中真实版本号。课程、成绩、观看时长和最近位置均为演示数据，未配置真实 API Key；当前版本为 2.0.1。
 
-<p align="center"><img src="docs/screenshots/orb.png" width="1000" alt="面板收纳后的圆形悬浮球，不遮挡课程主体"></p>
+**课程悬浮面板**：倍速、定时、自动提交开关和成绩总览入口。
 
-</details>
+<p align="center"><img src="docs/screenshots/panel.png" width="1000" alt="优课 UOOC 课程悬浮面板预览"></p>
+
+**收纳后的悬浮球**：面板可收起，减少对课程内容的遮挡。
+
+<p align="center"><img src="docs/screenshots/orb.png" width="1000" alt="优课 UOOC 收起后的圆形悬浮球预览"></p>
+
+**课程与成绩总览**：视频＋测验完成度、当前得分和分项成绩。
+
+<p align="center"><img src="docs/screenshots/grades-desktop.png" width="1000" alt="优课 UOOC 课程完成度与成绩总览预览"></p>
 
 ### 版本与更新
 
