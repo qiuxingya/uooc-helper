@@ -1,9 +1,11 @@
 (async () => {
   if (window.top !== window) return;
+  if(globalThis.UoocPlatforms?.platform(location.href)==='chaoxing'&&!/\/studentstudy$/.test(location.pathname))return;
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
-  let settings = {delay:3,autoExercises:true,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'1.2.0';
+  let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
+  const VERSION=chrome.runtime.getManifest?.().version||'2.0.0';
+  const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
   const shadow=host.attachShadow({mode:'closed'});
@@ -13,7 +15,7 @@
 .head{display:flex;align-items:center;justify-content:space-between;gap:12px}.eyebrow{font-size:10px;letter-spacing:2px;color:#6d8c86}h3{font-size:18px;letter-spacing:-.5px;margin:2px 0}.close{display:inline-flex;align-items:center;justify-content:center;gap:5px;flex-shrink:0;height:32px;padding:0 11px;border:1px solid #d6e7df;border-radius:999px;background:linear-gradient(180deg,#f7fbf8,#eaf4ee);color:#327462;font-size:12px;font-weight:600;line-height:1;box-shadow:0 1px 2px #174e3810;transition:background .18s,box-shadow .18s}.close svg{width:14px;height:14px}.close:hover{background:#dcefe4;box-shadow:0 2px 6px #174e3820}.head>div{min-width:0}.head .eyebrow{font-size:9px;letter-spacing:1.1px}.status{border:1px solid #dfede7;background:#f4f9f6;border-radius:12px;padding:12px;margin:16px 0;font-size:13px;overflow-wrap:anywhere}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions button{border:1px solid #d7e6de;border-radius:11px;padding:10px 5px;background:#fff;color:#33594f;font-size:13px}.actions #play{background:var(--accent);color:white;border-color:var(--accent)}button:hover{filter:brightness(.96)}button:disabled{opacity:.45;cursor:wait}.hint{font-size:11px;line-height:1.8;color:#789187;margin:14px 0 0}#log{max-height:150px;overflow:auto;white-space:pre-wrap;font-size:12px;color:#57796c;margin-top:10px}
 .orb{position:relative;display:grid;place-items:center;width:54px;height:54px;padding:0;border:1px solid #ffffff80;border-radius:50%;color:#fff;background:linear-gradient(145deg,#299d8e,#126859);box-shadow:0 6px 22px #125e5140;transition:transform .18s}.orb:hover{transform:translateY(-2px)}.orb svg{width:24px;height:24px}.dot{position:absolute;right:2px;top:2px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:#bfd7ca}.orb[data-mode=running] .dot{background:#8befaf}.orb[data-mode=attention] .dot{background:#ffbd69}@media(prefers-reduced-motion:reduce){.orb{transition:none}}
-.quick-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.quick-tools label{font-size:11px;color:#648377}.quick-tools select,.quick-tools input{display:block;width:100%;margin-top:5px;padding:7px;border:1px solid #d7e6de;border-radius:8px;background:#f7fbf8;color:#33594f;font:inherit}.quick-tools input{grid-column:1/-1}.session-stats{display:grid;gap:3px;margin-top:10px;font-size:11px;color:#648377}#countdown{color:#267466}#diagnostic{font-size:11px;margin-top:10px}#diagnostic pre{white-space:pre-wrap;overflow-wrap:anywhere}#diagnostic button{border:1px solid #d7e6de;border-radius:7px;background:#f7fbf8;color:#33594f;padding:5px 9px}.orb{touch-action:none;user-select:none}.box{position:fixed;right:auto;bottom:auto;width:min(330px,calc(100vw - 24px))}.grade-summary{margin-top:12px;border-top:1px solid #e1ece5;padding-top:11px;font-size:11px;color:#648377}.grade-summary span{display:block;line-height:1.8}.grade-summary button{margin-top:7px;padding:6px 10px;border:1px solid #d7e6de;border-radius:8px;color:#267466;background:#f7fbf8}.submit-toggle{display:flex;align-items:center;gap:8px;margin-top:12px;color:#426b60;font-size:12px}.submit-toggle input{width:15px;height:15px;accent-color:#147d70}.submit-toggle small{display:block;font-size:10px;color:#8a9f93;margin-top:3px}</style><section class="box" id="panel" aria-label="优课学习助手" hidden><header class="head"><div><div class="eyebrow">UOOC · STUDY COMPANION · v${VERSION}</div><h3>优课学习助手</h3></div><button class="close" id="minimize" aria-label="收起面板" title="收起为悬浮圆球（Esc）"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 5 5 5-5M5 10l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>收起</span></button></header><p class="status" id="state" role="status">就绪，点击开始连播</p><div class="actions"><button id="play">开始连播 · 2×</button><button id="stop">暂停全部</button><button id="solve">分析并填写</button><button id="inspect">检查页面</button></div><div class="quick-tools"><label>倍速<select id="rate"><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2" selected>2×</option></select></label><label>定时停止<select id="timer"><option value="0">关闭</option><option value="15">15 分钟</option><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option><option value="custom">自定义</option></select></label><input id="timerCustom" type="number" min="1" max="240" aria-label="自定义定时分钟" placeholder="1–240 分钟" hidden></div><div class="session-stats"><span id="sessionStats">本次 0 分钟 · 0 个视频</span><span id="countdown"></span></div><label class="submit-toggle"><input id="autoSubmit" type="checkbox"><span>自动提交测验<small>开启后正式交卷；验证需人工处理</small></span></label><div class="grade-summary"><span id="gradeSummary">网站完成度与成绩：待刷新</span><button id="openGrades">课程与成绩 ↗</button></div><details id="diagnostic" hidden><summary>页面诊断</summary><pre id="diagnosticText"></pre><button id="copyDiagnostic">复制诊断</button></details><p class="hint" id="workflowHint">自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。</p><div id="log" aria-live="polite"></div></section><button class="orb" id="orb" aria-label="展开优课学习助手" aria-expanded="false" aria-controls="panel" data-mode="idle" title="优课学习助手"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5 12 3l7 3.5V16L12 20l-7-4V6.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 8 5 3.5-5 3.5V8Z" fill="currentColor"/></svg><span class="dot"></span></button>`;
+.quick-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.quick-tools label{font-size:11px;color:#648377}.quick-tools select,.quick-tools input{display:block;width:100%;margin-top:5px;padding:7px;border:1px solid #d7e6de;border-radius:8px;background:#f7fbf8;color:#33594f;font:inherit}.quick-tools input{grid-column:1/-1}.session-stats{display:grid;gap:3px;margin-top:10px;font-size:11px;color:#648377}#countdown{color:#267466}#diagnostic{font-size:11px;margin-top:10px}#diagnostic pre{white-space:pre-wrap;overflow-wrap:anywhere}#diagnostic button{border:1px solid #d7e6de;border-radius:7px;background:#f7fbf8;color:#33594f;padding:5px 9px}.orb{touch-action:none;user-select:none}.box{position:fixed;right:auto;bottom:auto;width:min(330px,calc(100vw - 24px))}.grade-summary{margin-top:12px;border-top:1px solid #e1ece5;padding-top:11px;font-size:11px;color:#648377}.grade-summary span{display:block;line-height:1.8}.grade-summary button{margin-top:7px;padding:6px 10px;border:1px solid #d7e6de;border-radius:8px;color:#267466;background:#f7fbf8}.submit-toggle{display:flex;align-items:center;gap:8px;margin-top:12px;color:#426b60;font-size:12px}.submit-toggle input{width:15px;height:15px;accent-color:#147d70}.submit-toggle small{display:block;font-size:10px;color:#8a9f93;margin-top:3px}</style><section class="box" id="panel" aria-label="${PLATFORM}学习助手" hidden><header class="head"><div><div class="eyebrow">${PLATFORM} · STUDY COMPANION · v${VERSION}</div><h3>${PLATFORM}学习助手</h3></div><button class="close" id="minimize" aria-label="收起面板" title="收起为悬浮圆球（Esc）"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m5 5 5 5 5-5M5 10l5 5 5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>收起</span></button></header><p class="status" id="state" role="status">就绪，点击开始连播</p><div class="actions"><button id="play">开始连播 · 2×</button><button id="stop">暂停全部</button><button id="solve">分析并填写</button><button id="inspect">检查页面</button></div><div class="quick-tools"><label>倍速<select id="rate"><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="1.75">1.75×</option><option value="2" selected>2×</option></select></label><label>定时停止<select id="timer"><option value="0">关闭</option><option value="15">15 分钟</option><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option><option value="custom">自定义</option></select></label><input id="timerCustom" type="number" min="1" max="240" aria-label="自定义定时分钟" placeholder="1–240 分钟" hidden></div><div class="session-stats"><span id="sessionStats">本次 0 分钟 · 0 个视频</span><span id="countdown"></span></div><label class="submit-toggle"><input id="autoSubmit" type="checkbox"><span>自动提交测验<small>开启后正式交卷；验证需人工处理</small></span></label><div class="grade-summary"><span id="gradeSummary">网站完成度与成绩：待刷新</span><button id="openGrades">课程与成绩 ↗</button></div><details id="diagnostic" hidden><summary>页面诊断</summary><pre id="diagnosticText"></pre><button id="copyDiagnostic">复制诊断</button></details><p class="hint" id="workflowHint">自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。</p><div id="log" aria-live="polite"></div></section><button class="orb" id="orb" aria-label="展开优课学习助手" aria-expanded="false" aria-controls="panel" data-mode="idle" title="优课学习助手"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5 12 3l7 3.5V16L12 20l-7-4V6.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 8 5 3.5-5 3.5V8Z" fill="currentColor"/></svg><span class="dot"></span></button>`;
   document.documentElement.append(host);
   const el=id=>shadow.getElementById(id);
   function togglePanel(open){el('panel').hidden=!open;el('orb').setAttribute('aria-expanded',String(open));el('orb').setAttribute('aria-label',open?'收起优课学习助手':'展开优课学习助手');if(!open)el('orb').focus();else {placePanel();refreshGradeSummary();}}
@@ -21,10 +23,10 @@
   el('minimize').onclick=()=>togglePanel(false);
   shadow.addEventListener('keydown',e=>{if(e.key==='Escape'){togglePanel(false);e.stopPropagation();}});
   const say=text=>{el('state').textContent=text;el('orb').title=text;el('orb').dataset.mode=playing?'running':(/失败|错误|未找到|超时|暂停|人工/.test(text)?'attention':'idle');}, log=text=>{el('log').textContent=(text+'\n'+el('log').textContent).slice(0,9000);};
-  el('openGrades').onclick=()=>featureMessage('gradesOpen');
+  el('openGrades').onclick=()=>featureMessage('gradesOpen',{platform:globalThis.ChaoxingLearning?'chaoxing':'uooc'});
   const connected=!!chrome.runtime.onMessage?.addListener;
   const featureMessage=(type,data={})=>connected?chrome.runtime.sendMessage({type,...data}).then(r=>r?.error?null:r?.result).catch(()=>null):Promise.resolve(null);
-  async function refreshGradeSummary(){const data=await featureMessage('gradeSummary');const course=data?.course,snapshot=course?.snapshot;el('gradeSummary').textContent=!data?.verified?'网站完成度与成绩：请在总览中刷新确认账号':!snapshot?'网站完成度与成绩：尚未读取':('视频＋测验 '+(snapshot.progress.value===null?'暂无数据':snapshot.progress.value+'%')+' · 当前得分 '+(snapshot.current.state==='value'?snapshot.current.value:snapshot.current.state==='unpublished'?'未公布':'—')+(course.lastError?' · 上次刷新失败':'')+' · '+new Date(snapshot.updatedAt).toLocaleDateString());}
+  async function refreshGradeSummary(){const data=await featureMessage(globalThis.ChaoxingLearning?'cxGradeSummary':'gradeSummary');const course=data?.course,snapshot=course?.snapshot;el('gradeSummary').textContent=!data?.verified?'网站完成度与成绩：请在总览中刷新确认账号':!snapshot?'网站完成度与成绩：尚未读取':((globalThis.ChaoxingLearning?'章节任务点 ':'视频＋测验 ')+(snapshot.progress.value===null?'暂无数据':snapshot.progress.value+'%')+(globalThis.ChaoxingLearning?' · 综合成绩 ':' · 当前得分 ')+(snapshot.current.state==='value'?snapshot.current.value:snapshot.current.state==='unpublished'?'未公布':'—')+(course.lastError?' · 上次刷新失败':'')+' · '+new Date(snapshot.updatedAt).toLocaleDateString());}
   let position=null,drag=null,suppressClick=0,deadline=0,deadlineTimeout,run='',sessionMs=0,lastFlush=Date.now(),sampleState=null,segments=[],completedKeys=new Set(),completedNodes=new WeakMap(),lastStopCode='PAUSE',audio,alerted=new Set();
   function placePanel(){
     const box=el('panel');if(box.hidden)return;
@@ -47,7 +49,7 @@
   });
   function finishDrag(e){if(!drag||drag.id!==e.pointerId)return;if(drag.moved){suppressClick=Date.now()+350;featureMessage('orbSave',{position});}drag=null;}
   el('orb').addEventListener('pointerup',finishDrag);el('orb').addEventListener('pointercancel',finishDrag);window.addEventListener('resize',placeOrb);
-  function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。';if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;el('rate').value=String(settings.rate);el('play').textContent='开始连播 · '+settings.rate+'×';const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
+  function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;if(globalThis.ChaoxingLearning){settings.autoSubmit=false;settings.autoExercises=false;el('autoSubmit').disabled=true;el('autoSubmit').title='学习通可编辑章节测验尚待适配，当前保留人工提交';el('solve').disabled=true;el('solve').title='学习通可编辑章节测验样例尚未取得，暂保留人工作答';}el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':(globalThis.ChaoxingLearning?'学习通视频按顺序连播；遇到章节测验暂停。<br>可编辑测验尚待适配，当前请人工作答、保存及交卷。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。');if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;el('rate').value=String(settings.rate);el('play').textContent='开始连播 · '+settings.rate+'×';const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
   const settingsReady=connected?featureMessage('uiGet').then(data=>{if(data){applySettings(data.settings);position=data.position;placeOrb();}}):chrome.storage.sync.get('settings').then(data=>applySettings(data.settings));
   chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='sync'&&changes.settings?.newValue)applySettings(changes.settings.newValue);});
   el('autoSubmit').onchange=()=>{const autoSubmit=el('autoSubmit').checked;applySettings({...settings,autoSubmit});featureMessage('settingsPatch',{patch:{autoSubmit}});};
@@ -59,14 +61,14 @@
   function classify(text=''){return /保存/.test(text)?'SAVE':/弹题|确定|确认/.test(text)?'CONFIRM':/题|答案|填写/.test(text)?'QUESTION':/DeepSeek|模型|API/.test(text)?'MODEL':/网络|超时/.test(text)?'NETWORK':/目录|下一|资源/.test(text)?'ADAPTER':/播放|视频/.test(text)?'PLAYBACK':/人工|验证|考试/.test(text)?'MANUAL':'UNKNOWN';}
   function record(event,code){featureMessage('eventLog',{event,code,stage:busy?'quiz':advancing?'navigation':playing?'video':'idle'});}
   function valid(token){if(deadline&&Date.now()>=deadline){stop('定时已到，已暂停；已填写内容保留','timer');return false;}return token===epoch;}
-  async function playVideo(v,token){if(!valid(token)||!playing)return;await Reflect.apply(v.play,v,[]);if(!valid(token)||!playing)v.pause();}
+  async function playVideo(v,token){if(!valid(token)||!playing)return;if(globalThis.ChaoxingLearning)query('video').filter(other=>other!==v).forEach(other=>other.pause());await Reflect.apply(v.play,v,[]);if(!valid(token)||!playing)v.pause();}
   async function beginRun(token){
     await settingsReady;if(token!==epoch||!playing)return;globalThis.UoocCatalog?.reset?.();if(el('timer').value==='custom'&&!el('timerCustom').checkValidity())throw Error('自定义定时应为 1–240 分钟');run=Date.now().toString(36)+'-'+epoch;sessionMs=0;completed=0;completedKeys=new Set();completedNodes=new WeakMap();sampleState=null;segments=[];alerted.clear();lastStopCode='START';
     deadline=settings.timerMinutes?Date.now()+settings.timerMinutes*60000:0;
     if(deadline)deadlineTimeout=setTimeout(()=>{if(deadline&&Date.now()>=deadline)stop('定时已到，已暂停；已填写内容保留','timer');},Math.max(0,deadline-Date.now()));
     const answer=await featureMessage('timerStart',{minutes:settings.timerMinutes,run});if(connected&&settings.timerMinutes&&!answer)throw Error('无法创建定时停止，请重新加载扩展后重试');record('start','START');renderStats();
   }
-  function meta(v){const context=globalThis.UoocCatalog?.context?.()||{};return {resource:context.resource||(/^#\/(?:\d+\/){2,}\w*$/.test(location.hash)?location.hash:null),position:{title:document.title,chapter:context.chapter||'当前视频',seconds:Number.isFinite(v?.currentTime)?v.currentTime:0}};}
+  function meta(v){const context=globalThis.UoocCatalog?.context?.(v)||{};return {resource:context.resource||(/^#\/(?:\d+\/){2,}\w*$/.test(location.hash)?location.hash:null),position:{title:document.title,chapter:context.chapter||'当前视频',seconds:Number.isFinite(v?.currentTime)?v.currentTime:0}};}
   function renderStats(){el('sessionStats').textContent='本次 '+Math.floor(sessionMs/60000)+' 分 '+Math.floor(sessionMs/1000)%60+' 秒 · '+completed+' 个视频';el('countdown').textContent=deadline?'剩余 '+Math.max(0,Math.ceil((deadline-Date.now())/60000))+' 分钟后停止':'';}
   function sample(force=false){
     const now=Date.now(),list=videos(),v=list.length===1?list[0]:null;
@@ -131,7 +133,7 @@
     return overlaps || !!(overlay&&visible(overlay)&&v.paused&&!v.ended);
   }
   function questions() {
-    let roots=query(settings.questionSelector || '.ti,.question-item,.question_item,.question,fieldset,[data-question-id],.exam-item,.test-item').filter(visible);
+    let roots=(globalThis.ChaoxingLearning&&!settings.questionSelector?ChaoxingLearning.questionRoots():query(settings.questionSelector || '.ti,.question-item,.question_item,.question,fieldset,[data-question-id],.exam-item,.test-item')).filter(visible);
     if(!roots.length) {
       const groups=new Map();
       query('input[type=radio],input[type=checkbox],input[type=text],input:not([type]),input[type=number]').filter(visible).forEach(input=>{
@@ -139,7 +141,7 @@
         if(root) groups.set(root,true);
       });roots=[...groups.keys()];
     }
-    roots=roots.filter(r=>activeQuestionRoot(r)&&!roots.some(other=>other!==r && r.contains(other)));
+    roots=roots.filter(r=>!globalThis.ChaoxingLearning?.isReview(r.ownerDocument)&&activeQuestionRoot(r)&&!roots.some(other=>other!==r && r.contains(other)));
     return roots.map(root=>{
       const inputs=query('input[type=radio],input[type=checkbox]',root);
       const stem=settings.stemSelector ? root.querySelector(settings.stemSelector) : root.querySelector('.ti-q-c,.question-title,.question_title,.stem,legend,[data-stem]');
@@ -159,7 +161,7 @@
       return {root,inputs,payload:{text,type:inputs[0].type==='checkbox'?'multiple':'single',options}, signature:JSON.stringify({text,options})};
     }).filter(Boolean);
   }
-  function videos(){return query('video').filter(visible);}
+  function videos(){const list=query('video').filter(visible);return globalThis.ChaoxingLearning?ChaoxingLearning.selectVideos(list):list;}
   const savedQuestions=new WeakMap(),savedBatches=new WeakMap(),submittedDocs=new WeakSet();
   function speed(v){if(v.defaultPlaybackRate!==settings.rate)v.defaultPlaybackRate=settings.rate;if(v.playbackRate!==settings.rate)v.playbackRate=settings.rate;}
   async function advance(token,initial=false,laterChapter=false){
@@ -313,7 +315,7 @@
           if(settings.autoSubmit){if(!await submitQuiz(token,answered))return null;submittedDocs.add(current[0].root.ownerDocument);log('网站已确认测验提交成功，继续后续资源');}
           current.forEach(q=>savedQuestions.set(q.root,q.signature));await advance(token);n=0;
         }
-        finally{busy=false;el('solve').disabled=false;}
+        finally{busy=false;el('solve').disabled=!!globalThis.ChaoxingLearning;}
         continue;
       }
       const list=videos();if(!list.length&&n>=4&&globalThis.UoocCatalog?.picker?.()&&!recoveredPickers.has(location.href)){recoveredPickers.add(location.href);log('当前为目录占位页，继续查找可播放资源');await advance(token,true);continue;}if(list.length===1&&!list[0].ended){speed(list[0]);return list[0];}
@@ -323,7 +325,7 @@
   }
   function stop(message,reason='error') {
     sample(true);flushStats();playing=false;epoch++;deadline=0;clearTimeout(deadlineTimeout);
-    videos().forEach(v=>v.pause());say(message);el('play').disabled=false;lastStopCode=reason==='timer'?'TIMER':reason==='manual'?'PAUSE':classify(message);
+    query('video').forEach(v=>v.pause());say(message);el('play').disabled=false;lastStopCode=reason==='timer'?'TIMER':reason==='manual'?'PAUSE':classify(message);
     featureMessage('cancelRequests');featureMessage('timerStop',{run});record(reason==='error'?'error':reason==='timer'?'timer':'pause',lastStopCode);
     if(reason==='error')beepOnce(lastStopCode);renderStats();
   }
@@ -342,7 +344,7 @@
       v.addEventListener('pause',()=>{sample(true);flushStats();});
       v.addEventListener('waiting',()=>{sample(true);sampleState=null;});
       v.addEventListener('ended', async()=>{
-        if(!playing||advancing||!valid(epoch)) return;if(!finishVideo(v))return;advancing=true;const token=epoch;say(`本次已播完 ${completed} 节，等待切换`);
+        if(!playing||advancing||!valid(epoch)) return;if(!finishVideo(v))return;globalThis.ChaoxingLearning?.markEnded(v);advancing=true;const token=epoch;say(`本次已播完 ${completed} 节，等待切换`);
         try {await wait();if(!valid(token)||!playing)return;if(blocked())throw Error('需要人工处理当前页面');
           await advance(token);
           const nextVideo=await loadedVideo(token);if(!nextVideo)return;
@@ -427,6 +429,7 @@
       return batch;
   }
   el('solve').onclick=async()=>{
+    if(globalThis.ChaoxingLearning){say('学习通可编辑测验尚待适配，请人工作答与保存');return;}
     if(busy)return;alerted.clear();prepareAudio();stop('正在读取题目','manual');const token=epoch;busy=true;el('solve').disabled=true;el('play').disabled=true;
     try {await solveQuestions(token);
     }catch(e){if(valid(token)){say(e.message || '请求失败');lastStopCode=classify(e.message);record('error',lastStopCode);beepOnce(lastStopCode);}}finally{busy=false;el('solve').disabled=false;el('play').disabled=false;}

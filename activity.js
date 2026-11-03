@@ -5,11 +5,12 @@
  const today=time=>{const d=new Date(time);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
  const cleanText=(text,max=120)=>typeof text==='string'?text.replace(/[\u0000-\u001f]/g,' ').slice(0,max):'';
  function route(raw){
+  if(globalThis.UoocPlatforms)return UoocPlatforms.route(raw);
   const u=new URL(raw);if(!/^https?:$/.test(u.protocol)||!/(^|\.)uooc\.net\.cn$/i.test(u.hostname)||u.port||u.username||u.password)throw Error('课程地址不受支持');
   const hash=/^#\/[a-zA-Z0-9/_-]*$/.test(u.hash)?u.hash:'';
   return u.origin+u.pathname+hash;
  }
- function identity(raw){const u=new URL(route(raw)),parts=u.hash.slice(2).split('/');return /^\d+$/.test(parts[0])&&/^\d+$/.test(parts[1])?u.origin+u.pathname+'#/'+parts.slice(0,2).join('/'):u.origin+u.pathname;}
+ function identity(raw){if(globalThis.UoocPlatforms)return UoocPlatforms.identity(raw);const u=new URL(route(raw)),parts=u.hash.slice(2).split('/');return /^\d+$/.test(parts[0])&&/^\d+$/.test(parts[1])?u.origin+u.pathname+'#/'+parts.slice(0,2).join('/'):u.origin+u.pathname;}
  function prune(data,now){
   data.days||={};data.recent||=[];data.logs||=[];
   for(const [day,entry] of Object.entries(data.days)){

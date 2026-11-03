@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "优课学习助手",
-  "version": "1.2.0",
-  "description": "课程连播、可选测验提交、闯关章节跳转与成绩总览。",
+  "version": "2.0.0",
+  "description": "优课与学习通课程连播、倍速、习题辅助填写、学习统计、课程成绩和本机登录保持。",
   "permissions": [
     "storage",
     "alarms"
@@ -51,6 +51,7 @@
         "http://*.uooc.net.cn/*"
       ],
       "js": [
+        "platforms.js",
         "settings.js",
         "course-parser.js",
         "course-reader.js",
@@ -58,6 +59,37 @@
         "quiz-submit.js",
         "content.js"
       ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.chaoxing.com/*",
+        "http://*.chaoxing.com/*"
+      ],
+      "js": [
+        "platforms.js",
+        "settings.js",
+        "chaoxing-parser.js",
+        "chaoxing-reader.js",
+        "chaoxing-adapter.js",
+        "quiz-submit.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://fycourse.fanya.chaoxing.com/fyportal/courselist/course*",
+        "https://*.chaoxing.com/mycourse/studentstudy*",
+        "https://*.chaoxing.com/mooc-ans/mycourse/studentstudy*",
+        "https://passport2.chaoxing.com/login*",
+        "https://v8.chaoxing.com/*"
+      ],
+      "js": [
+        "chaoxing-parser.js",
+        "chaoxing-account.js"
+      ],
+      "all_frames": true,
       "run_at": "document_idle"
     }
   ],
@@ -69,6 +101,7 @@
     "https://www.uooc.net.cn/*",
     "https://uooc.net.cn/*",
     "https://api.github.com/*",
-    "*://*.uooc.net.cn/*"
+    "*://*.uooc.net.cn/*",
+    "*://*.chaoxing.com/*"
   ]
 }

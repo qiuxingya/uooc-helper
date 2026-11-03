@@ -1,4 +1,4 @@
-if(typeof importScripts==='function')importScripts('settings.js','activity.js','grades-worker.js','login-session.js','updater.js');
+if(typeof importScripts==='function')importScripts('platforms.js','settings.js','activity.js','grades-worker.js','chaoxing-grades.js','login-session.js','chaoxing-login.js','updater.js');
 const ENDPOINT = 'https://api.deepseek.com/chat/completions';
 const ready = Promise.all([
   chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}),
@@ -123,15 +123,18 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(!message||typeof message.type!=='string')return;
   const own=typeof sender.id==='string'&&sender.id===chrome.runtime.id;
   const pageUrl=String(sender.url||'').split(/[?#]/)[0];
-  const role=own&&pageUrl===chrome.runtime.getURL('grades.html')?'grades':own&&pageUrl===chrome.runtime.getURL('options.html')?'options':own&&pageUrl===chrome.runtime.getURL('popup.html')?'popup':own&&sender.tab&&(!sender.frameId)&&/^https?:\/\/([a-z0-9-]+\.)*uooc\.net\.cn\//i.test(sender.url||'')?'course':null;
+  const role=own&&pageUrl===chrome.runtime.getURL('grades.html')?'grades':own&&pageUrl===chrome.runtime.getURL('options.html')?'options':own&&pageUrl===chrome.runtime.getURL('popup.html')?'popup':own&&sender.tab&&(!sender.frameId)&&(globalThis.UoocPlatforms?UoocPlatforms.study(sender.url):/^https?:\/\/([a-z0-9-]+\.)*uooc\.net\.cn\//i.test(sender.url||''))?'course':own&&sender.tab&&!sender.frameId&&globalThis.UoocPlatforms?.platform(sender.url)==='chaoxing'?'cxpage':null;
   let task;
-  if(globalThis.UoocUpdater?.types.has(message.type)){if(!role)return;task=UoocUpdater.handle(message,sender,role);}
+  if(message.type==='cxAccountHint'&&own&&sender.tab&&globalThis.UoocPlatforms?.platform(sender.url)==='chaoxing'&&(/\/studentstudy(?:[?#]|$)/.test(sender.url)||/^https:\/\/(?:fycourse\.fanya|passport2|v8)\.chaoxing\.com\//.test(sender.url))){task=ChaoxingGrades.handle(message,sender,'cxaccount');}
+  else if(globalThis.ChaoxingGrades?.types.has(message.type)){if(!role)return;task=ChaoxingGrades.handle(message,sender,role);}
+  else if(globalThis.UoocUpdater?.types.has(message.type)){if(!role)return;task=UoocUpdater.handle(message,sender,role);}
+  else if(globalThis.ChaoxingLogin?.types.has(message.type)){if(!role)return;task=ChaoxingLogin.handle(message,sender,role);}
   else if(globalThis.UoocLogin?.types.has(message.type)){if(!role)return;task=UoocLogin.handle(message,sender,role);}
   else if(globalThis.UoocGrades?.types.has(message.type)){if(!role)return;task=UoocGrades.handle(message,sender,role);}
   else if(globalThis.UoocActivity?.types.has(message.type)){
-    if(!role)return;task=(async()=>{if(role==='course'&&await globalThis.UoocGrades?.isScanTab(sender.tab.id))throw Error('课程成绩刷新页只读');return UoocActivity.handle(message,sender,role);})();
+    if(!role)return;task=(async()=>{if(role==='course'&&(await globalThis.UoocGrades?.isScanTab(sender.tab.id)||await globalThis.ChaoxingGrades?.isScanTab(sender.tab.id)))throw Error('课程成绩刷新页只读');return UoocActivity.handle(message,sender,role);})();
   }else if(message.type==='solve'){
-    if(role!=='course')return;task=(async()=>{if(await globalThis.UoocGrades?.isScanTab(sender.tab.id))throw Error('课程成绩刷新页只读，不能答题');return solve(message.question,sender.tab.id);})();
+    if(role!=='course')return;task=(async()=>{if(await globalThis.UoocGrades?.isScanTab(sender.tab.id)||await globalThis.ChaoxingGrades?.isScanTab(sender.tab.id))throw Error('课程成绩刷新页只读，不能答题');return solve(message.question,sender.tab.id);})();
   }else{
     if(role!=='options')return;
     if(message.type==='keyStatus')task=vaultStatus();
@@ -146,6 +149,8 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
 if(globalThis.UoocActivity)ready.then(()=>UoocActivity.restore()).catch(()=>{});
 if(globalThis.UoocGrades)ready.then(()=>UoocGrades.restore()).catch(()=>{});
 if(globalThis.UoocLogin)ready.then(()=>UoocLogin.restore()).catch(()=>{});
+if(globalThis.ChaoxingLogin)ready.then(()=>ChaoxingLogin.restore()).catch(()=>{});
+if(globalThis.ChaoxingGrades)ready.then(()=>ChaoxingGrades.restore()).catch(()=>{});
 if(globalThis.UoocUpdater)ready.then(()=>UoocUpdater.restore()).catch(()=>{});
 async function solve(q,tabId) {
   if (!q || typeof q.text !== 'string' || !q.text.trim() || q.text.length > 12000) throw Error('题目格式不完整');

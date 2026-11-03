@@ -13,7 +13,7 @@
   if(!Object.keys(bucket.courses||{}).length)delete cache.accounts[account];
  }return cache;}
  async function cache(){const data=prune((await chrome.storage.local.get('gradeCache')).gradeCache);return data;}
- async function note(event,code,count=0){const {gradeAudit=[]}=await chrome.storage.local.get('gradeAudit');gradeAudit.push({time:Date.now(),version:'1.2.0',event,code,count});await chrome.storage.local.set({gradeAudit:gradeAudit.filter(x=>x.time>Date.now()-KEEP).slice(-200)});}
+ async function note(event,code,count=0){const {gradeAudit=[]}=await chrome.storage.local.get('gradeAudit');gradeAudit.push({time:Date.now(),version:chrome.runtime.getManifest?.().version||'2.0.0',event,code,count});await chrome.storage.local.set({gradeAudit:gradeAudit.filter(x=>x.time>Date.now()-KEEP).slice(-200)});}
  async function close(job){await chrome.alarms.clear(ALARM);if(Number.isInteger(job?.tabId)){try{await chrome.tabs.sendMessage(job.tabId,{type:'gradeAbort'});}catch{}try{await chrome.tabs.remove(job.tabId);}catch{}}}
  async function finish(job,status,error=null){job.status=status;job.error=error;job.pending=null;job.finishedAt=Date.now();job.found=job.courses?.length||0;job.failed=Object.values(job.results||{}).filter(r=>r.error).length;job.results={};job.courses=[];job.account=null;await save(job);await close(job);await note('refresh',error||status,job.done||0);}
  async function invalidateAccount(){await chrome.storage.session.remove('gradeAccount');}
@@ -123,7 +123,7 @@
    if(message.type==='gradeHello')return hello(sender);
    if(message.type==='gradeResult')return result(message,sender);
    if(message.type==='gradeAccount')return observeAccount(message,sender);
-   if(message.type==='gradesOpen'){if(!['course','popup','options','grades'].includes(role))throw Error('未授权操作');await chrome.tabs.create({url:chrome.runtime.getURL('grades.html'),active:true});return {};}
+   if(message.type==='gradesOpen'){if(!['course','popup','options','grades'].includes(role))throw Error('未授权操作');await chrome.tabs.create({url:chrome.runtime.getURL('grades.html')+(message.platform==='chaoxing'?'?platform=chaoxing':''),active:true});return {};}
    if(message.type==='gradeSummary'){
     const cycle=new URL(sender.url).pathname.match(/^\/home\/course\/(\d+)/)?.[1]||new URL(sender.url).pathname.match(/^\/home\/learn\/new\/(\d+)/)?.[1]||new URL(sender.url).hash.match(/^#\/(\d+)\//)?.[1];const info=await get();return {course:info.verified&&id(cycle)?info.courses.find(c=>c.cycleId===cycle)||null:null,verified:info.verified};
    }
