@@ -4,7 +4,7 @@
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.0.0';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.0.1';
   const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
@@ -394,9 +394,20 @@
       for(let n=0;n<items.length;n++){
         if(!valid(token))return;const q=items[n];
         say(`正在分析第 ${n+1}/${items.length} 题`);
-        const response=await chrome.runtime.sendMessage({type:'solve',question:q.payload});
-        if(!valid(token))return;if(response?.error)throw Error(response.error);if(!response?.result)throw Error('扩展通信失败');
-        const result=response.result;log(`第 ${n+1} 题：${q.payload.type==='blank'?result.answers.map((s,i)=>`第${i+1}空：${s}`).join('；'):result.answers.map(i=>String.fromCharCode(65+i)).join('、')}\n${result.explanation}`);
+        let response=await chrome.runtime.sendMessage({type:'solve',question:q.payload});
+        if(!valid(token))return;
+        if(response?.error){
+          if(/^(模型答案不确定或格式有误，请人工处理|模型未返回有效 JSON|模型回答未完整结束，请重试)$/.test(response.error)){
+            say(`第 ${n+1} 题正在请求最可能答案`);
+            response=await chrome.runtime.sendMessage({type:'solve',question:q.payload,allowGuess:true});
+            if(!valid(token))return;
+            if(response?.error)throw Error(`第 ${n+1} 题重试失败：${response.error}`);
+          }else{
+            throw Error(response.error);
+          }
+        }
+        if(!response?.result)throw Error('扩展通信失败');
+        const result=response.result;log(`第 ${n+1} 题${result.uncertain?'（推测答案）':''}：${q.payload.type==='blank'?result.answers.map((s,i)=>`第${i+1}空：${s}`).join('；'):result.answers.map(i=>String.fromCharCode(65+i)).join('、')}\n${result.explanation}`);
         batch.answers.push(result.answers);
         await wait();if(!valid(token))return;
         const fresh=questions().find(x=>x.root===q.root);
