@@ -1,7 +1,9 @@
 (() => {
- const el=id=>document.getElementById(id),send=async(type,data={})=>{const r=await chrome.runtime.sendMessage({type,...data});if(!r||r.error)throw Error(r?.error||'后台未响应');return r.result;};
- function render(d){el('keepCxLogin').checked=d.enabled;const labels={valid:'登录有效，已保留本机会话；服务器可能仍有独立有效期',permission:'尚未授权学习通 Cookie 访问',disabled:'学习通登录保持已关闭',loginRequired:'当前未登录或已失效，请先登录学习通',network:'检查时网络异常，现有会话未清除',unverified:'尚未确认登录状态，请先打开学习通'};el('cxLoginResult').textContent=(labels[d.state]||labels.unverified)+(d.checkedAt?' · '+new Date(d.checkedAt).toLocaleString():'');}
- el('keepCxLogin').onchange=async()=>{const input=el('keepCxLogin'),wanted=input.checked;input.disabled=true;try{if(wanted&&!await chrome.permissions.request({permissions:['cookies'],origins:['https://*.chaoxing.com/*']}))throw Error('未授权，学习通登录保持未开启');render(await send('cxLoginToggle',{enabled:wanted}));}catch(e){input.checked=!wanted;el('cxLoginResult').textContent=e.message;}finally{input.disabled=false;}};
- el('checkCxLogin').onclick=async()=>{el('checkCxLogin').disabled=true;try{render(await send('cxLoginCheck'));}catch(e){el('cxLoginResult').textContent=e.message;}finally{el('checkCxLogin').disabled=false;}};
- send('cxLoginStatus').then(render).catch(()=>{});
+ const el=id=>document.getElementById(id),input=el('keepLogin'),button=el('checkLogin');
+ const send=async(type,data={})=>{const r=await chrome.runtime.sendMessage({type,...data});if(!r||r.error)throw Error(r?.error||'后台未响应');return r.result;};
+ const labels={valid:'登录有效',permission:'尚未授权',disabled:'已关闭',loginRequired:'请先登录',network:'网络异常，原会话保留',unverified:'尚未确认登录'};
+ async function refresh(){const rows=await Promise.allSettled([send('loginStatus'),send('cxLoginStatus')]);rows.forEach((r,i)=>el(i?'cxLoginResult':'loginResult').textContent=(i?'学习通：':'优课：')+(r.status==='fulfilled'?(labels[r.value.state]||labels.unverified):r.reason.message));const states=rows.filter(r=>r.status==='fulfilled').map(r=>!!r.value.enabled);input.checked=states.length===2&&states.every(Boolean);input.indeterminate=states.some(Boolean)&&!input.checked;}
+ async function task(fn){let error='';input.disabled=button.disabled=true;try{await fn();}catch(e){error=e.message;}finally{await refresh();if(error)el('loginResult').textContent=error+'；'+el('loginResult').textContent;input.disabled=button.disabled=false;}}
+ input.onchange=()=>{const enabled=input.checked;task(async()=>{if(enabled&&!await chrome.permissions.request({permissions:['cookies'],origins:['https://www.uooc.net.cn/*','https://uooc.net.cn/*','https://*.chaoxing.com/*']}))throw Error('未授权，登录保持未变更');const rows=await Promise.allSettled([send('loginToggle',{enabled}),send('cxLoginToggle',{enabled})]);if(rows.some(r=>r.status==='rejected'))throw Error('部分平台设置失败，请查看下方状态并重试');});};
+ button.onclick=()=>task(async()=>{await Promise.allSettled([send('loginCheck'),send('cxLoginCheck')]);});refresh();
 })();

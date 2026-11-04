@@ -25,7 +25,7 @@
  }
  async function load(){const {activityData}=await chrome.storage.local.get('activityData');return prune(activityData||{days:{},recent:[],logs:[]},Date.now());}
  function merge(intervals,segment){const list=[...intervals,segment].sort((a,b)=>a[0]-b[0]),out=[];for(const [a,b] of list){const last=out.at(-1);if(last&&a<=last[1])last[1]=Math.max(b,last[1]);else out.push([a,b]);}return out;}
- const codes=new Set(['START','PAUSE','TIMER','VIDEO_END','PLAYBACK','QUESTION','SAVE','CONFIRM','VERIFY','MODEL','NETWORK','ADAPTER','MANUAL','UNKNOWN','AUTH','BALANCE','MODEL_UNAVAILABLE','SERVER','RATE_LIMIT','TIMEOUT','ANSWER_UNCERTAIN','ANSWER_FORMAT','ANSWER_INCOMPLETE','INVALID_RESPONSE','COMMUNICATION','CANCELLED','RETRY_EXHAUSTED','AUTOPLAY','VIDEO_TIMEOUT','VIDEO_START','VIDEO_CHANGED','PAGE_CHANGED','REQUEST_FAILED']);
+ const codes=new Set(['UNSUPPORTED','EXAM','START','PAUSE','TIMER','VIDEO_END','PLAYBACK','QUESTION','SAVE','CONFIRM','VERIFY','MODEL','NETWORK','ADAPTER','MANUAL','UNKNOWN','AUTH','BALANCE','MODEL_UNAVAILABLE','SERVER','RATE_LIMIT','TIMEOUT','ANSWER_UNCERTAIN','ANSWER_FORMAT','ANSWER_INCOMPLETE','INVALID_RESPONSE','COMMUNICATION','CANCELLED','RETRY_EXHAUSTED','AUTOPLAY','VIDEO_TIMEOUT','VIDEO_START','VIDEO_CHANGED','PAGE_CHANGED','REQUEST_FAILED']);
  function logEntry(data,event,stage,code){data.logs.push({time:Date.now(),version:chrome.runtime.getManifest().version,event:['start','pause','error','complete','diagnostic','timer','stage'].includes(event)?event:'error',stage:['video','quiz','navigation','idle','video_loading','playing','question','retry','save','submit','paused','complete','review'].includes(stage)?stage:'idle',code:codes.has(code)?code:'UNKNOWN'});data.logs=data.logs.slice(-1000);}
  async function report(message,sender){
   const now=Date.now(),data=await load(),url=route(sender.url),course=identity(url);
@@ -94,7 +94,7 @@
    if(message.type==='settingsGet')return serial(async()=>{const data=await chrome.storage.local.get(Object.keys(UoocSettings.defaults));return UoocSettings.validate(data,false);});
    if(role!=='options')throw Error('此操作仅供设置页使用');
    if(message.type==='settingsSave')return serial(async()=>{
-    const settings=UoocSettings.validate(message.settings);await chrome.storage.local.set(settings);await chrome.storage.sync.set({settings});return settings;
+    const settings=UoocSettings.validate(message.settings);const withModel=Object.hasOwn(message,'model');if(withModel&&(typeof message.model!=='string'||!message.model.trim()||message.model.length>200))throw Error('模型名称无效');await chrome.storage.local.set({...settings,...(withModel?{model:message.model.trim()}:{})});let syncWarning=false;try{await chrome.storage.sync.set({settings});}catch{syncWarning=true;}return withModel?{settings,syncWarning}:settings;
    });
    if(message.type==='resetOrb'){await chrome.storage.local.remove('orbPosition');const tabs=await chrome.tabs.query({});await Promise.all(tabs.map(t=>chrome.tabs.sendMessage(t.id,{type:'orbReset'}).catch(()=>{})));return {};}
    if(message.type==='logsExport')return serial(async()=>({format:'uooc-logs',version:1,logs:(await load()).logs}));
