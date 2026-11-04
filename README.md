@@ -7,12 +7,14 @@
 <p align="center">课程连播 · DeepSeek 辅助答题 · 课程与成绩总览 · 本机登录保持</p>
 
 <p align="center">
-  <img alt="版本" src="https://img.shields.io/badge/version-2.1.3-167C68">
+  <img alt="版本" src="https://img.shields.io/badge/version-2.1.4-167C68">
   <img alt="架构" src="https://img.shields.io/badge/Manifest-V3-286D58">
   <img alt="浏览器" src="https://img.shields.io/badge/browser-Edge%20%7C%20Chrome-426F65">
 </p>
 
 面向优课 UOOC 与学习通的桌面浏览器扩展，提供视频连播、倍速、学习统计和课程成绩查看；优课支持 DeepSeek 辅助填写习题。原生 JavaScript 实现，无需安装 Node.js 或执行构建命令即可加载。
+
+**2.1.4 弹题修正与保存后续播**：支持网站公布的 JSON 数组正确答案，例如 `["B"]`、`["A","C"]`；答错后修正选项、点击确定并续播；修复测验保存后停在旧页面、继续连播仍不跳转的问题。
 
 **2.1.3 按钮优化**：顶部设置入口增加文字与醒目背景，删除密钥采用浅红描边及垃圾桶图标，操作逻辑保持不变。
 
@@ -26,7 +28,7 @@
 
 **2.0.0 学习通适配版**：接入章节多视频连播、倍速、定时停止、学习统计、独立成绩总览与登录保持开关。学习通可编辑章节测验尚缺真实样例，暂由人工作答和提交；课程与成绩已通过真实账号复测；真实连播与登录检测尚待反馈。原优课答题流程保留。
 
-从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.3**。本机助手不会自动覆盖包含新增访问范围的版本。
+从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.4**。本机助手不会自动覆盖包含新增访问范围的版本。
 
 > 本项目为非官方工具，与优课、学习通及 DeepSeek 无隶属关系。请遵守课程和平台的使用要求。模型可能答错，插件不会保证成绩、绕过闯关验证或伪造学习记录。
 
@@ -36,7 +38,7 @@
 
 ## 页面预览
 
-以下全部截图由当前 **v2.1.3 源码**重新渲染，课程、成绩与登录状态均为模拟数据，不包含真实 API Key、Cookie 或个人信息。更新视图中的新版信息仅用于演示；窄屏展示不代表移动端浏览器支持安装扩展。
+以下截图由 **v2.1.3 源码**渲染，与 v2.1.4 的界面布局一致（本版仅调整弹题反馈与保存后切换逻辑），课程、成绩与登录状态均为模拟数据，不包含真实 API Key、Cookie 或个人信息。更新视图中的新版信息仅用于演示；窄屏展示不代表移动端浏览器支持安装扩展。
 
 ### 插件概览与版本更新
 
@@ -82,7 +84,7 @@
 
 ### 可选：首次启用 Windows 自动更新助手
 
-1. 下载并解压 `uooc-helper-2.1.3.zip`，替换原插件目录，在扩展管理页重新加载。
+1. 下载并解压 `uooc-helper-2.1.4.zip`，替换原插件目录，在扩展管理页重新加载。
 2. 打开设置页“版本与更新”，展开“首次安装本机助手”，复制扩展 ID。
 3. 下载并解压 `uooc-updater-windows.zip`，运行 `UoocUpdater.exe`。填写扩展 ID，选择浏览器当前实际加载、直接包含 manifest.json 的独立插件文件夹，再选择 Edge 或 Chrome，点击“关联并安装”。
 4. 回到插件设置，点击“授权并连接本机助手”。确认显示关联目录后，即可使用“立即更新”。
@@ -105,7 +107,7 @@
 
 ### 发布者操作
 
-上传与标签、manifest.json一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.3` 对应 `uooc-helper-2.1.3.zip`。每次发新版本都递增版本号，不要覆盖同版本包；需要本机助手自动安装更新时，另外提供 `uooc-updater-windows.zip`。自 2.1.2 起必须同时上传 `update.json` 和 `SHA256SUMS.txt`，静态更新客户端依赖最新正式版中的清单附件。
+上传与标签、manifest.json一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.4` 对应 `uooc-helper-2.1.4.zip`。每次发新版本都递增版本号，不要覆盖同版本包；需要本机助手自动安装更新时，另外提供 `uooc-updater-windows.zip`。自 2.1.2 起必须同时上传 `update.json` 和 `SHA256SUMS.txt`，静态更新客户端依赖最新正式版中的清单附件。
 
 完整GitHub源码包额外包含 `native-updater/`、`tools/build-release.ps1` 和 `.github/workflows/release.yml`。在允许脚本的Windows PowerShell环境可运行构建脚本生成两个 ZIP、静态清单 `update.json` 和 `SHA256SUMS.txt`。推送v开头标签或手动触发工作流会构建并创建Release草稿／附加安装包；检查附件后再发布，草稿不会被自动更新客户端选中。工作流需要仓库启用Actions，Release上传需要contents写权限。不要把GitHub源码包当作自动安装附件。
 
@@ -180,7 +182,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 适用于支持 Manifest V3 的桌面版 Edge 和 Chrome，当前自动化浏览器验证使用 Edge。Firefox、Safari 和移动端浏览器尚未验证。
 
-1. 从 [v2.1.3 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.3) 下载 `uooc-helper-2.1.3.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
+1. 从 [v2.1.4 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.4) 下载 `uooc-helper-2.1.4.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
 2. 打开浏览器扩展管理页：Edge 为 `edge://extensions/`，Chrome 为 `chrome://extensions/`。
 3. 开启“开发者模式”，选择“加载解压缩的扩展”。
 4. 选择直接包含 [manifest.json](manifest.json) 的文件夹，**不要选择 ZIP 文件**。
@@ -422,7 +424,7 @@ uooc-helper/
 
 1. 先处理尚未保存的答案，再用新版文件替换扩展原安装目录。
 2. 在扩展管理页点击“重新加载”，随后刷新课程页面；仅下载 ZIP 或仅刷新网页不一定能更新已安装的副本。
-3. 展开悬浮面板，确认顶部版本为 **v2.1.3**。
+3. 展开悬浮面板，确认顶部版本为 **v2.1.4**。
 4. 如果仍显示旧版，检查扩展实际加载目录，不要同时开启多个助手副本。
 
 ## 验证范围与反馈
@@ -437,6 +439,7 @@ uooc-helper/
 
 | 版本 | 主要变化 |
 | --- | --- |
+| [2.1.4](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.4) | 修复视频弹题 JSON 数组反馈解析，以及测验保存后切换卡住；支持原入口有限重试、暂停后继续，避免重复答题保存 |
 | [2.1.3](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.3) | 设置入口增加文字、图标和绿色背景；删除密钥改为浅红描边与垃圾桶图标，保留确认流程；沿用助手 1.1.0，不新增权限 |
 | [2.1.2](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.2) | 插件与助手改用静态 update.json，不再通过 GitHub REST API 查询版本；助手升级至 1.1.0，首次需手动迁移与下载域名授权；保留校验和回滚 |
 | 2.1.1 | 精简界面、统一登录开关、弹窗内更新与恢复、保存一致性和草稿保护 |
@@ -451,7 +454,7 @@ uooc-helper/
 | 0.9.0 | 拖动悬浮球、倍速、定时、学习统计、诊断与备份 |
 | 0.8.1 | 免密码的 API Key 本机加密保存 |
 
-最新版 2.1.3 见 [按钮与界面验证记录](docs/validation-2.1.3.md)；静态更新方案见 [2.1.2 验证记录](docs/validation-2.1.2.md)；2.1.1 见 [界面与恢复验证记录](docs/validation-2.1.1.md)；2.1.0 的测试范围见 [验证记录](docs/validation-2.1.0.md)；2.0.1 历史修复见 [此前验证记录](docs/validation-2.0.1.md)；学习通此前的测试范围与待确认项见 [2.0.0 验证记录](docs/validation-2.0.0.md)。
+本版 2.1.4 见 [弹题修正验证记录](docs/validation-2.1.4.md)；2.1.3 见 [按钮与界面验证记录](docs/validation-2.1.3.md)；静态更新方案见 [2.1.2 验证记录](docs/validation-2.1.2.md)；2.1.1 见 [界面与恢复验证记录](docs/validation-2.1.1.md)；2.1.0 的测试范围见 [验证记录](docs/validation-2.1.0.md)；2.0.1 历史修复见 [此前验证记录](docs/validation-2.0.1.md)；学习通此前的测试范围与待确认项见 [2.0.0 验证记录](docs/validation-2.0.0.md)。
 
 ## 开发与验证
 
@@ -459,7 +462,7 @@ uooc-helper/
 
 使用 Node.js 24 与桌面 Edge，运行 `npm install --ignore-scripts` 安装测试依赖，再运行 `npm test`。测试使用独立模拟页面与接口，不使用真实账号、真实 Key 或付费请求；截图写入已忽略的 `.test-artifacts/`。GitHub Actions 的稳定性回归使用同一入口。
 
-打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.3`，生成插件 ZIP、独立 Windows 本机助手 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录，不使用含 `.git` 的开发仓库作为本机助手的更新目录。
+打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.4`，生成插件 ZIP、独立 Windows 本机助手 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录，不使用含 `.git` 的开发仓库作为本机助手的更新目录。
 
 ### 弹窗内更新
 

@@ -32,7 +32,7 @@
       if(done(e)||skipped.has(key(e)))continue;if(locked(e)){skip(e);continue;}
       if(video(e)||quiz(e)){
        if(quiz(e)&&!autoExercises)throw Error('下一项是测验或作业，连播已暂停；请打开题目后点击“分析并填写”');
-       if(cancelled())return false;e.click();await wait();return !cancelled();
+       if(cancelled())return false;options.onSelect?.(e);e.click();await wait();return !cancelled();
       }
      }
     }

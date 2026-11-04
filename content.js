@@ -4,7 +4,7 @@
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.1.3';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.1.4';
   const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
@@ -247,11 +247,11 @@
     }).filter(Boolean);
   }
   function videos(){const list=query('video').filter(visible);return globalThis.ChaoxingLearning?ChaoxingLearning.selectVideos(list):list;}
-  const savedQuestions=new WeakMap(),savedBatches=new WeakMap(),submittedDocs=new WeakSet();
+  const savedQuestions=new WeakMap(),savedBatches=new WeakMap(),savedNavigation=new WeakMap(),submittedDocs=new WeakSet();
   function speed(v){if(v.defaultPlaybackRate!==settings.rate)v.defaultPlaybackRate=settings.rate;if(v.playbackRate!==settings.rate)v.playbackRate=settings.rate;}
   async function advance(token,initial=false,laterChapter=false){
-    if(!settings.nextSelector&&globalThis.UoocCatalog?.available())await globalThis.UoocCatalog.advance(()=>!valid(token)||!playing,250,initial,settings.autoExercises,{laterChapter:laterChapter||!!globalThis.UoocCatalog.gateNotice?.(),onSkip:()=>{log('检测到锁定或闯关限制，尝试后续可进入的章节');record('stage','ADAPTER');}});
-    else {if(!valid(token)||!playing)return;next().click();}
+    let selectedTarget=null;if(!settings.nextSelector&&globalThis.UoocCatalog?.available())await globalThis.UoocCatalog.advance(()=>!valid(token)||!playing,250,initial,settings.autoExercises,{onSelect:target=>selectedTarget=target,laterChapter:laterChapter||!!globalThis.UoocCatalog.gateNotice?.(),onSkip:()=>{log('检测到锁定或闯关限制，尝试后续可进入的章节');record('stage','ADAPTER');}});
+    else {if(!valid(token)||!playing)return;selectedTarget=next();selectedTarget.click();}return selectedTarget;
   }
   function saveButtons(){return query('button,a,[role=button],input[type=button]').filter(e=>visible(e)&&!e.disabled&&/^(保存试卷|保存答案)$/.test((e.innerText||e.value||'').trim()));}
   function inlineVideoFor(items){
@@ -283,7 +283,8 @@
         if(!match||q.payload.type==='blank')continue;
         const value=match[1].trim().replace(/[Ａ-Ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-65248));
         let answers;
-        if(/^[A-L](?:[\s、,，;；/和与]*[A-L])*[。.]?$/.test(value))answers=[...new Set((value.match(/[A-L]/g)||[]).map(c=>c.charCodeAt(0)-65))];
+        if(value.startsWith('[')){try{const end=value.indexOf(']');if(end<0)continue;const letters=JSON.parse(value.slice(0,end+1));if(!Array.isArray(letters)||!letters.length||letters.some(x=>typeof x!=='string'||!/^\s*[A-L]\s*$/.test(x)))continue;answers=[...new Set(letters.map(x=>x.trim().charCodeAt(0)-65))];}catch{continue;}}
+        else if(/^[A-L](?:[\s、,，;；/和与]*[A-L])*[。.]?$/.test(value))answers=[...new Set((value.match(/[A-L]/g)||[]).map(c=>c.charCodeAt(0)-65))];
         else{
           const label=value.match(/^([A-L])[.．、\s]/);
           if(label&&q.payload.type==='single')answers=[label[1].charCodeAt(0)-65];
@@ -339,8 +340,8 @@
     }
     throw failure('测验题目尚未完整加载或有不支持的题型，未保存，请检查页面后重试','UNSUPPORTED');
   }
-  function verifiedBatch(batch){
-    return batch&&batch.context===location.href&&sameQuestions(batch.items,questions())&&batch.items.every((q,n)=>q.root.ownerDocument.URL===batch.documents[n]&&q.inputs.every((input,i)=>q.payload.type==='blank'?input.value===batch.answers[n][i]:input.checked===batch.answers[n].includes(i)));
+  function verifiedBatch(batch,allowNavigation=false){
+    return batch&&(allowNavigation||batch.context===location.href)&&sameQuestions(batch.items,questions())&&batch.items.every((q,n)=>(allowNavigation||q.root.ownerDocument.URL===batch.documents[n])&&q.inputs.every((input,i)=>q.payload.type==='blank'?input.value===batch.answers[n][i]:input.checked===batch.answers[n].includes(i)));
   }
   async function saveAnswers(token,batch){
     if(!valid(token))return false;
@@ -362,6 +363,22 @@
       for(let n=0;n<48;n++){if(!valid(token))return false;if(saved){log(settings.autoSubmit?'答案已保存，正在尝试提交普通测验':'答案已保存，提交留待之后集中处理；正在继续视频');return true;}await sleep(250);}
       throw failure('未收到网站保存成功提示，已暂停，请检查答案是否保存','SAVE');
     }finally{observer.disconnect();}
+  }
+  async function leaveSavedQuiz(batch,token){
+    const identity=()=>location.href+'|'+(globalThis.UoocCatalog?.context?.().resource||'');
+    let state=savedNavigation.get(batch);
+    if(!state){state={origin:identity(),target:null,token,retried:false};savedNavigation.set(batch,state);say('答案已保存，正在打开下一资源','VIDEO_LOADING');state.target=await advance(token);}
+    else if(state.token!==token){state.token=token;state.retried=false;if(!state.target&&identity()===state.origin)state.target=await advance(token);}
+    for(let n=0;n<80;n++){
+      if(!valid(token)||!playing)return false;if(blocked())throw failure('下一资源需要人工处理，已保留保存结果','MANUAL');
+      const current=questions();if(!current.some(q=>batch.items.some(old=>old.root===q.root&&old.signature===q.signature))){savedNavigation.delete(batch);return true;}
+      if(n>=12&&!state.retried&&identity()===state.origin){
+        const target=state.target;state.retried=true;
+        if(target?.isConnected&&visible(target)&&!target.disabled&&!target.classList.contains('disabled')&&!target.querySelector('.icon-lock,[class$="_icon_lock"],img[src$="/lock.png"]')&&target.getAttribute('aria-disabled')!=='true'&&!target.closest('.locked,.unopen,.is-locked,[data-locked=true]')){if(!valid(token)||!playing)return false;log('下一资源尚未响应，重试同一入口');target.click();}
+      }
+      await sleep(250);
+    }
+    throw failure('答案已保存，但下一资源尚未加载；请检查目录后点击继续连播重试','ADAPTER');
   }
   function quizDocument(doc){
     const title=[doc.title,...Array.from(doc.querySelectorAll('h1,.paper-title,.exam-title,.task-title')).map(e=>e.textContent)].join(' ');
@@ -386,7 +403,7 @@
         if(!settings.autoExercises)throw failure('当前资源需要人工处理，连播暂停','MANUAL');
         let current=questions();
         const inline=inlineVideoFor(current);
-        if(current.every(q=>savedQuestions.get(q.root)===q.signature)){if(inline){speed(inline);return inline;}if(!settings.autoSubmit){await sleep(250);continue;}}
+        if(current.every(q=>savedQuestions.get(q.root)===q.signature)){if(inline){speed(inline);return inline;}if(!settings.autoSubmit||submittedDocs.has(current[0].root.ownerDocument)){const saved=savedBatches.get(current[0].root.ownerDocument);if(saved&&verifiedBatch(saved,savedNavigation.has(saved))){if(!await leaveSavedQuiz(saved,token))return null;continue;}current.forEach(q=>savedQuestions.delete(q.root));}}
         busy=true;el('solve').disabled=true;
         try{
           const cached=savedBatches.get(current[0].root.ownerDocument);const answered=cached&&verifiedBatch(cached)?cached:await solveQuestions(token);if(!valid(token)||!answered)return null;current=answered.items;
@@ -398,7 +415,7 @@
           if(saveButtons().length){if(!await saveAnswers(token,answered))return null;}else if(!settings.autoSubmit){throw failure('未找到唯一的答案保存按钮，已暂停','SAVE');}
           savedBatches.set(current[0].root.ownerDocument,answered);
           if(settings.autoSubmit){if(!await submitQuiz(token,answered))return null;submittedDocs.add(current[0].root.ownerDocument);log('网站已确认测验提交成功，继续后续资源');}
-          current.forEach(q=>savedQuestions.set(q.root,q.signature));await advance(token);n=0;
+          current.forEach(q=>savedQuestions.set(q.root,q.signature));if(!await leaveSavedQuiz(answered,token))return null;n=0;
         }
         finally{if(token===epoch){busy=false;el('solve').disabled=!!globalThis.ChaoxingLearning;}}
         continue;
