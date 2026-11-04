@@ -37,7 +37,9 @@ try{
  $taskNativeZip=Join-Path $taskOut 'uooc-updater-windows.zip'
  Compress-Archive -LiteralPath $taskExtension -DestinationPath $taskZip -Force
  Compress-Archive -Path (Join-Path $taskHelper '*') -DestinationPath $taskNativeZip -Force
- $taskLines=foreach($taskPackage in $taskZip,$taskNativeZip){$taskHash=Get-FileHash -LiteralPath $taskPackage -Algorithm SHA256;'{0}  {1}' -f $taskHash.Hash.ToLowerInvariant(),[IO.Path]::GetFileName($taskPackage)}
+ $taskInfo=[ordered]@{format='uooc-update';schemaVersion=1;version=$taskVersion;tag="v$taskVersion";downloadUrl="https://github.com/qiuxingya/uooc-helper/releases/download/v$taskVersion/uooc-helper-$taskVersion.zip";sha256=(Get-FileHash -LiteralPath $taskZip -Algorithm SHA256).Hash.ToLowerInvariant();size=(Get-Item -LiteralPath $taskZip).Length;notes=(Get-Content -LiteralPath (Join-Path $taskSource 'RELEASE_NOTES.md') -Raw)}
+ [IO.File]::WriteAllText((Join-Path $taskOut 'update.json'),($taskInfo|ConvertTo-Json -Depth 4),[Text.UTF8Encoding]::new($false))
+ $taskLines=foreach($taskPackage in $taskZip,$taskNativeZip,(Join-Path $taskOut 'update.json')){$taskHash=Get-FileHash -LiteralPath $taskPackage -Algorithm SHA256;'{0}  {1}' -f $taskHash.Hash.ToLowerInvariant(),[IO.Path]::GetFileName($taskPackage)}
  [IO.File]::WriteAllLines((Join-Path $taskOut 'SHA256SUMS.txt'),$taskLines,[Text.UTF8Encoding]::new($false))
  Write-Output "Release $taskVersion built in $taskOut"
 }finally{

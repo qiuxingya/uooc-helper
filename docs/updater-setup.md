@@ -37,3 +37,7 @@
 源码为 `UoocUpdater.cs`，使用 Windows .NET Framework 和系统自带编译器。可在允许执行脚本的 PowerShell 环境运行 `./build.ps1`，无需额外安装 Python 或 Node。
 
 助手自身不从 Release 自动替换 EXE。若将来助手协议或能力发生变化，应单独发布新版助手供用户审阅后安装。
+
+## 从旧版本切换到静态清单
+
+2.1.2 起首次请手动升级插件和 1.1.0 本机助手、重新关联并授权 GitHub 下载域名。插件与助手均读取最新正式版 update.json，缺失时不回退 API。发布时四个附件应一并上传：插件 ZIP、助手 ZIP、update.json 与 SHA256SUMS.txt。

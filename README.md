@@ -7,12 +7,14 @@
 <p align="center">课程连播 · DeepSeek 辅助答题 · 课程与成绩总览 · 本机登录保持</p>
 
 <p align="center">
-  <img alt="版本" src="https://img.shields.io/badge/version-2.1.1-167C68">
+  <img alt="版本" src="https://img.shields.io/badge/version-2.1.2-167C68">
   <img alt="架构" src="https://img.shields.io/badge/Manifest-V3-286D58">
   <img alt="浏览器" src="https://img.shields.io/badge/browser-Edge%20%7C%20Chrome-426F65">
 </p>
 
 面向优课 UOOC 与学习通的桌面浏览器扩展，提供视频连播、倍速、学习统计和课程成绩查看；优课支持 DeepSeek 辅助填写习题。原生 JavaScript 实现，无需安装 Node.js 或执行构建命令即可加载。
+
+**2.1.2 静态更新清单**：插件与助手改为直接读取更新清单，不再调用 GitHub REST API 查询版本。首次需手动升级 1.1.0 助手并授权下载域名。
 
 **2.1.1 界面与稳定性优化**：统一登录保持、弹窗内更新与进度、分类设置、保存与草稿保护，完善更新失败恢复。
 
@@ -22,7 +24,7 @@
 
 **2.0.0 学习通适配版**：接入章节多视频连播、倍速、定时停止、学习统计、独立成绩总览与登录保持开关。学习通可编辑章节测验尚缺真实样例，暂由人工作答和提交；课程与成绩已通过真实账号复测；真实连播与登录检测尚待反馈。原优课答题流程保留。
 
-从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.1**。本机助手不会自动覆盖包含新增访问范围的版本。
+从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.2**。本机助手不会自动覆盖包含新增访问范围的版本。
 
 > 本项目为非官方工具，与优课、学习通及 DeepSeek 无隶属关系。请遵守课程和平台的使用要求。模型可能答错，插件不会保证成绩、绕过闯关验证或伪造学习记录。
 
@@ -56,7 +58,7 @@
 
 ### 优课 UOOC 页面预览
 
-以下沿用 1.2.0 的界面演示截图，保留图中真实版本号。课程、成绩、观看时长和最近位置均为演示数据，未配置真实 API Key；当前版本为 2.1.1。
+以下沿用 1.2.0 的界面演示截图，保留图中真实版本号。课程、成绩、观看时长和最近位置均为演示数据，未配置真实 API Key；当前版本为 2.1.2。
 
 **课程悬浮面板**：倍速、定时、自动提交开关和成绩总览入口。
 
@@ -76,7 +78,7 @@
 
 ### 可选：首次启用 Windows 自动更新助手
 
-1. 下载并解压 `uooc-helper-2.1.1.zip`，替换原插件目录，在扩展管理页重新加载。
+1. 下载并解压 `uooc-helper-2.1.2.zip`，替换原插件目录，在扩展管理页重新加载。
 2. 打开设置页“版本与更新”，展开“首次安装本机助手”，复制扩展 ID。
 3. 下载并解压 `uooc-updater-windows.zip`，运行 `UoocUpdater.exe`。填写扩展 ID，选择浏览器当前实际加载、直接包含 manifest.json 的独立插件文件夹，再选择 Edge 或 Chrome，点击“关联并安装”。
 4. 回到插件设置，点击“授权并连接本机助手”。确认显示关联目录后，即可使用“立即更新”。
@@ -99,7 +101,7 @@
 
 ### 发布者操作
 
-上传与标签、manifest.json一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.1` 对应 `uooc-helper-2.1.1.zip`。每次发新版本都递增版本号，不要覆盖同版本包；需要本机助手自动安装更新时，另外提供 `uooc-updater-windows.zip`。
+上传与标签、manifest.json一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.2` 对应 `uooc-helper-2.1.2.zip`。每次发新版本都递增版本号，不要覆盖同版本包；需要本机助手自动安装更新时，另外提供 `uooc-updater-windows.zip`。
 
 完整GitHub源码包额外包含 `native-updater/`、`tools/build-release.ps1` 和 `.github/workflows/release.yml`。在允许脚本的Windows PowerShell环境可运行构建脚本生成两个ZIP及SHA256SUMS。推送v开头标签或手动触发工作流会构建并创建Release草稿／附加安装包；检查附件后再发布，草稿不会被自动更新客户端选中。工作流需要仓库启用Actions，Release上传需要contents写权限。不要把GitHub源码包当作自动安装附件。
 
@@ -174,7 +176,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 适用于支持 Manifest V3 的桌面版 Edge 和 Chrome，当前自动化浏览器验证使用 Edge。Firefox、Safari 和移动端浏览器尚未验证。
 
-1. 从 [v2.1.1 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.1) 下载 `uooc-helper-2.1.1.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
+1. 从 [v2.1.2 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.2) 下载 `uooc-helper-2.1.2.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
 2. 打开浏览器扩展管理页：Edge 为 `edge://extensions/`，Chrome 为 `chrome://extensions/`。
 3. 开启“开发者模式”，选择“加载解压缩的扩展”。
 4. 选择直接包含 [manifest.json](manifest.json) 的文件夹，**不要选择 ZIP 文件**。
@@ -416,7 +418,7 @@ uooc-helper/
 
 1. 先处理尚未保存的答案，再用新版文件替换扩展原安装目录。
 2. 在扩展管理页点击“重新加载”，随后刷新课程页面；仅下载 ZIP 或仅刷新网页不一定能更新已安装的副本。
-3. 展开悬浮面板，确认顶部版本为 **v2.1.1**。
+3. 展开悬浮面板，确认顶部版本为 **v2.1.2**。
 4. 如果仍显示旧版，检查扩展实际加载目录，不要同时开启多个助手副本。
 
 ## 验证范围与反馈
@@ -451,7 +453,7 @@ uooc-helper/
 
 使用 Node.js 24 与桌面 Edge，运行 `npm install --ignore-scripts` 安装测试依赖，再运行 `npm test`。测试使用独立模拟页面与接口，不使用真实账号、真实 Key 或付费请求；截图写入已忽略的 `.test-artifacts/`。GitHub Actions 的稳定性回归使用同一入口。
 
-打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.1`，生成插件ZIP、独立Windows本机助手ZIP及SHA256SUMS。安装时选择解压后的独立插件目录，不使用含 `.git` 的开发仓库作为本机助手的更新目录。
+打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.2`，生成插件ZIP、独立Windows本机助手ZIP及SHA256SUMS。安装时选择解压后的独立插件目录，不使用含 `.git` 的开发仓库作为本机助手的更新目录。
 
 ### 弹窗内更新
 
@@ -462,3 +464,9 @@ uooc-helper/
 普通设置显示未修改、未保存、保存中、已保存和失败状态；保存期间继续编辑会保留新草稿。模型名称与普通设置一次写入本机，云同步失败单独提示。未保存密钥会定位到连接分类，离开时由浏览器提示。导入设置不会把未保存模型误标为已保存。
 
 更新先读取后台状态，安装中禁止重复操作；旧轮询不会覆盖失败提示。校验失败需重新检查，助手未连接可前往设置，课程页未关闭时需手动关闭后重试。仅新版完成确认后显示更新成功，等待确认不代表成功。
+
+## 2.1.2 静态更新清单
+
+插件与本机助手改为读取最新正式版中的 update.json，日常查询不再消耗 GitHub REST API 匿名额度。仍依赖 GitHub 网络，保留缓存、SHA-256 校验与回滚；未增加数字签名。
+
+首次请手动升级插件与 1.1.0 助手、重新关联，并授权 GitHub 下载域名。之后可继续在插件弹窗内检查和更新。发布时必须提供 update.json；缺失时提示手动升级，不回退 API。详见 RELEASE_NOTES.md。

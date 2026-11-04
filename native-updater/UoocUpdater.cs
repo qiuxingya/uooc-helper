@@ -17,8 +17,8 @@ using Microsoft.Win32;
 
 namespace UoocUpdater {
 public static class Core {
- public const string Host="com.qiuxingya.uooc_updater", Repo="https://api.github.com/repos/qiuxingya/uooc-helper", DownloadPrefix="https://github.com/qiuxingya/uooc-helper/releases/download/";
- public const string HelperVersion="1.0.0";
+ public const string Host="com.qiuxingya.uooc_updater", Repo="https://github.com/qiuxingya/uooc-helper/releases/latest/download/update.json", DownloadPrefix="https://github.com/qiuxingya/uooc-helper/releases/download/";
+ public const string HelperVersion="1.1.0";
  public static readonly JavaScriptSerializer Json=new JavaScriptSerializer { MaxJsonLength=2097152,RecursionLimit=50 };
  public static string Home {get{return Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);}}
  public static Dictionary<string,object> Obj(object x){var d=x as Dictionary<string,object>;if(d==null)throw new Exception("INVALID_JSON");return d;}
@@ -37,7 +37,7 @@ public static class Core {
  public static void Target(string folder,string id){folder=Full(folder);if(!Regex.IsMatch(id??"", "^[a-p]{32}$")||folder.StartsWith(@"\\")||folder.Length<8||Directory.GetParent(folder)==null)throw new Exception("INVALID_TARGET");NoLinks(folder);Manifest(folder);if(ExpectedId(folder)!=id)throw new Exception("EXTENSION_DIRECTORY_ID_MISMATCH");if(folder.IndexOf("\\User Data\\",StringComparison.OrdinalIgnoreCase)>=0||Directory.Exists(Path.Combine(folder,"_metadata"))||Directory.Exists(Path.Combine(folder,".git"))||Directory.Exists(Path.Combine(folder,"work")))throw new Exception("USE_STANDALONE_EXTENSION_FOLDER");foreach(string required in new[]{"background.js","content.js","options.html"})if(!File.Exists(Path.Combine(folder,required)))throw new Exception("INVALID_TARGET");SafeTree(folder);}
  public static byte[] Fetch(string raw,int limit){
   Uri u=new Uri(raw);for(int redirects=0;redirects<6;redirects++){
-   bool api=u.Host=="api.github.com"&&u.AbsolutePath.StartsWith("/repos/qiuxingya/uooc-helper/",StringComparison.Ordinal);
+   bool api=u.AbsoluteUri==Repo;
    bool asset=u.Host=="github.com"&&u.AbsolutePath.StartsWith("/qiuxingya/uooc-helper/releases/download/",StringComparison.Ordinal);
    bool cdn=u.Host=="release-assets.githubusercontent.com";
    if(u.Scheme!="https"||!u.IsDefaultPort||u.UserInfo.Length>0||(!api&&!asset&&!cdn)||(redirects==0&&cdn))throw new Exception("UNTRUSTED_DOWNLOAD");
@@ -49,11 +49,9 @@ public static class Core {
    }}catch(WebException e){var response=e.Response as HttpWebResponse;if(response!=null){int status=(int)response.StatusCode;bool limited=response.Headers["X-RateLimit-Remaining"]=="0"||!String.IsNullOrEmpty(response.Headers["Retry-After"]);response.Dispose();if(status==429||(status==403&&limited))throw new Exception("GITHUB_RATE_LIMIT");if(status==403)throw new Exception("GITHUB_FORBIDDEN");if(status==404)throw new Exception("RELEASE_NOT_FOUND");}throw new Exception("NETWORK_ERROR");}
   }throw new Exception("TOO_MANY_REDIRECTS");
  }
- public static Dictionary<string,object> Release(){return Obj(Json.DeserializeObject(Encoding.UTF8.GetString(Fetch(Repo+"/releases/latest",2097152))));}
+ public static Dictionary<string,object> Release(){return Obj(Json.DeserializeObject(Encoding.UTF8.GetString(Fetch(Repo,2097152))));}
  public static Dictionary<string,object> Package(Dictionary<string,object> release){
-  if(Flag(release,"draft")||Flag(release,"prerelease"))throw new Exception("NO_STABLE_RELEASE");var assets=Arr(release,"assets").Select(Obj).Where(a=>Regex.IsMatch(Str(a,"name"),@"^uooc-helper-\d+(\.\d+){1,3}\.zip$")).ToArray();
-  string tag=Str(release,"tag_name"),tagVersion=tag.StartsWith("v")?tag.Substring(1):tag;Version temp;if(Regex.IsMatch(tagVersion,@"^\d+(\.\d+){1,3}$")&&Version.TryParse(tagVersion,out temp))assets=assets.Where(a=>Str(a,"name")=="uooc-helper-"+tagVersion+".zip").ToArray();
-  if(assets.Length!=1)throw new Exception("PACKAGE_NOT_UNIQUE");var selected=assets[0];string name=Str(selected,"name"),v=name.Substring(12,name.Length-16);VersionOf(v);string expected=DownloadPrefix+Uri.EscapeDataString(tag)+"/"+name;if(Str(selected,"browser_download_url")!=expected)throw new Exception("UNTRUSTED_DOWNLOAD");string digest=Str(selected,"digest");if(!Regex.IsMatch(digest,@"^sha256:[a-fA-F0-9]{64}$"))throw new Exception("PACKAGE_HASH_MISSING");return new Dictionary<string,object>{{"version",v},{"url",expected},{"sha256",digest.Substring(7).ToLowerInvariant()},{"releaseId",release["id"]}};
+  if(Str(release,"format")!="uooc-update"||!release.ContainsKey("schemaVersion")||!(release["schemaVersion"] is int)||Convert.ToInt32(release["schemaVersion"])!=1)throw new Exception("INVALID_RELEASE");string v=Str(release,"version");VersionOf(v);string tag="v"+v,name="uooc-helper-"+v+".zip",url=DownloadPrefix+tag+"/"+name,hash=Str(release,"sha256");if(Str(release,"tag")!=tag||Str(release,"downloadUrl")!=url||!Regex.IsMatch(hash,@"^[a-f0-9]{64}$")||!release.ContainsKey("size")||!(release["size"] is int || release["size"] is long)||Convert.ToInt64(release["size"])<=0||Convert.ToInt64(release["size"])>52428800)throw new Exception("INVALID_RELEASE");return new Dictionary<string,object>{{"version",v},{"url",url},{"sha256",hash}};
  }
  public static string Digest(byte[] bytes){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-","").ToLowerInvariant();}
  public static string SafeEntry(string raw){string s=raw.Replace('\\','/');if(s.Length>230||s.StartsWith("/")||s.Contains(":"))throw new Exception("UNSAFE_ZIP_PATH");foreach(string part in s.Split('/'))if(part.Length==0||part=="."||part==".."||part.EndsWith(" ")||part.EndsWith(".")||Regex.IsMatch(part,@"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)",RegexOptions.IgnoreCase)||part.Any(c=>c<32||"<>\"|?*".Contains(c)))throw new Exception("UNSAFE_ZIP_PATH");return s;}

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "优课学习助手",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "优课与学习通课程连播、倍速、习题辅助填写、学习统计、课程成绩和本机登录保持。",
   "permissions": [
     "storage",
@@ -100,8 +100,9 @@
   "optional_host_permissions": [
     "https://www.uooc.net.cn/*",
     "https://uooc.net.cn/*",
-    "https://api.github.com/*",
     "*://*.uooc.net.cn/*",
-    "*://*.chaoxing.com/*"
+    "*://*.chaoxing.com/*",
+    "https://github.com/*",
+    "https://release-assets.githubusercontent.com/*"
   ]
 }

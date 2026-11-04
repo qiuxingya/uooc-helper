@@ -37,3 +37,7 @@
 源码为 `UoocUpdater.cs`，使用 Windows .NET Framework 和系统自带编译器。可在允许执行脚本的 PowerShell 环境运行 `./build.ps1`，无需额外安装 Python 或 Node。
 
 助手自身不从 Release 自动替换 EXE。若将来助手协议或能力发生变化，应单独发布新版助手供用户审阅后安装。
+
+## 1.1.0 静态清单
+
+日常检查读取固定的最新正式版 update.json 附件，不使用 GitHub REST API。首次从旧助手升级时，请下载新版独立助手 ZIP，替换旧文件，运行 UoocUpdater.exe 并重新关联原扩展 ID 与安装路径。
