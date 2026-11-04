@@ -30,49 +30,51 @@
 
 > 本项目为非官方工具，与优课、学习通及 DeepSeek 无隶属关系。请遵守课程和平台的使用要求。模型可能答错，插件不会保证成绩、绕过闯关验证或伪造学习记录。
 
-## 2.1.1 界面与稳定性优化
-
-工具栏弹窗分为“学习概览／版本更新”，设置入口在顶部；最近课程默认显示 3 门，可展开全部。更新说明可展开，检查与安装均在弹窗内完成。设置页分为“常用设置／连接与账号／高级工具”，切换分类保留未保存内容。悬浮面板保留开始、暂停、倍速和定时，成绩、自动提交与诊断收入“更多”，学习通不展示尚未支持的答题按钮。
-
-以下为模拟数据界面展示，真实课程截图保留在后续优课与学习通预览中。
-
-<p align="center"><img src="docs/screenshots/ui-2.1.1-popup.png" width="300" alt="新版学习概览"><img src="docs/screenshots/ui-2.1.1-update.png" width="300" alt="弹窗内版本更新"><img src="docs/screenshots/ui-2.1.1-panel.png" width="300" alt="紧凑悬浮面板"></p>
-
-<p align="center"><img src="docs/screenshots/ui-2.1.1-settings.png" width="900" alt="分类设置页"><img src="docs/screenshots/ui-2.1.1-settings-mobile.png" width="300" alt="窄屏分类设置"></p>
-
 ## 导航
 
 [页面预览](#页面预览) · [功能概览](#功能概览) · [安装](#安装) · [DeepSeek 配置](#配置-deepseek) · [日常使用](#日常使用) · [答题恢复](#答题恢复与有限重试) · [登录保持](#登录保持) · [版本与更新](#版本与更新) · [课程与成绩](#课程完成度与成绩) · [数据与权限](#数据与权限) · [常见问题](#常见问题)
 
 ## 页面预览
 
+以下全部截图由当前 **v2.1.3 源码**重新渲染，课程、成绩与登录状态均为模拟数据，不包含真实 API Key、Cookie 或个人信息。更新视图中的新版信息仅用于演示；窄屏展示不代表移动端浏览器支持安装扩展。
+
+### 插件概览与版本更新
+
+顶部带文字的“设置”入口、最近学习记录，以及无需跳转的更新视图。
+
+<p align="center"><img src="docs/screenshots/latest-2.1.3-popup.png" width="320" alt="v2.1.3 插件概览和设置入口"><img src="docs/screenshots/latest-2.1.3-update.png" width="320" alt="v2.1.3 弹窗内更新说明，模拟新版信息"></p>
+
 ### 学习通页面预览
 
-以下为 2.0.0 学习通适配版的隔离测试截图，课程与成绩均为模拟数据；窄屏截图展示响应式布局，不代表移动端浏览器已支持安装扩展。
+当前学习通面板保留连播、倍速和定时，将低频操作收入“更多”；尚未支持的答题按钮不展示。
 
-**课程与成绩总览**：章节任务点完成度、综合成绩和分项权重。
+<p align="center"><img src="docs/screenshots/latest-2.1.3-chaoxing-panel.png" width="330" alt="v2.1.3 学习通悬浮面板"></p>
 
-<p align="center"><img src="docs/screenshots/chaoxing-grades-desktop.png" width="1000" alt="学习通课程与成绩总览，模拟数据"></p>
+章节任务点完成度、综合成绩及网站提供的分项指标：
 
-**窄屏成绩与登录保持设置**：历史版本截图；当前版本已合并为统一开关。
-
-<p align="center"><img src="docs/screenshots/chaoxing-grades-mobile.png" width="320" alt="学习通成绩总览窄屏预览"> <img src="docs/screenshots/chaoxing-login-mobile.png" width="320" alt="学习通与优课独立登录保持设置预览"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-chaoxing-grades.png" width="1000" alt="最新版学习通课程与成绩总览，模拟数据"></p>
 
 ### 优课 UOOC 页面预览
 
-以下沿用 1.2.0 的界面演示截图，保留图中真实版本号。课程、成绩、观看时长和最近位置均为演示数据，未配置真实 API Key；当前版本为 2.1.3。
+紧凑面板提供连播、暂停和手动答题，“更多”中可查看成绩、自动提交及诊断。收起后显示可拖动圆球。
 
-**课程悬浮面板**：倍速、定时、自动提交开关和成绩总览入口。
+<p align="center"><img src="docs/screenshots/latest-2.1.3-uooc-panel.png" width="330" alt="v2.1.3 优课悬浮面板"><img src="docs/screenshots/latest-2.1.3-uooc-orb.png" width="70" alt="最新版优课悬浮球"></p>
 
-<p align="center"><img src="docs/screenshots/panel.png" width="1000" alt="优课 UOOC 课程悬浮面板预览"></p>
+视频＋测验完成度、当前得分和分项成绩：
 
-**收纳后的悬浮球**：面板可收起，减少对课程内容的遮挡。
+<p align="center"><img src="docs/screenshots/latest-2.1.3-uooc-grades.png" width="1000" alt="最新版优课课程与成绩总览，模拟数据"></p>
 
-<p align="center"><img src="docs/screenshots/orb.png" width="1000" alt="优课 UOOC 收起后的圆形悬浮球预览"></p>
+### 分类设置与统一登录保持
 
-**课程与成绩总览**：视频＋测验完成度、当前得分和分项成绩。
+设置分为常用设置、连接与账号、高级工具；两平台共用登录保持开关。“删除密钥”采用浅红描边及垃圾桶图标。
 
-<p align="center"><img src="docs/screenshots/grades-desktop.png" width="1000" alt="优课 UOOC 课程完成度与成绩总览预览"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-settings.png" width="1000" alt="最新版常用设置分类"><img src="docs/screenshots/latest-2.1.3-account.png" width="1000" alt="最新版模型连接、删除密钥和统一登录保持"></p>
+
+<details><summary>查看窄屏与统一登录保持</summary>
+
+<p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="最新版窄屏密钥设置"><img src="docs/screenshots/latest-2.1.3-login-mobile.png" width="320" alt="最新版统一登录保持"><img src="docs/screenshots/latest-2.1.3-chaoxing-grades-mobile.png" width="320" alt="最新版学习通窄屏成绩"></p>
+
+</details>
 
 ### 版本与更新
 
@@ -111,7 +113,7 @@
 
 优课显示视频＋测验完成度和当前得分；学习通显示章节任务点完成度和综合成绩，展开后查看网站提供的分项指标。总评只在网站明确公布时显示。
 
-<p align="center"><img src="docs/screenshots/grades-desktop.png" width="1000" alt="课程与成绩总览的演示页面，包含进度、得分及分项成绩"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-uooc-grades.png" width="1000" alt="课程与成绩总览的演示页面，包含进度、得分及分项成绩"></p>
 
 ### 密钥、播放与登录保持设置
 
@@ -120,7 +122,7 @@ Key 保存、连接测试、自动提交、登录保持和备份工具均可在�
 <details>
 <summary>展开完整设置页截图</summary>
 
-<p align="center"><img src="docs/screenshots/settings-desktop.png" width="1000" alt="完整设置页：DeepSeek 配置、播放选项、登录保持和备份工具"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-account.png" width="1000" alt="完整设置页：DeepSeek 配置、播放选项、登录保持和备份工具"></p>
 
 </details>
 
@@ -128,19 +130,19 @@ Key 保存、连接测试、自动提交、登录保持和备份工具均可在�
 
 Windows 本机助手完成一次关联后，可在这里检查、手动安装或开启自动安装。优课页面仍打开时延后覆盖。
 
-<p align="center"><img src="docs/screenshots/updater.png" width="760" alt="1.2.0 更新中心：当前版本、仓库版本、检查、关联本机助手和自动更新开关（演示状态）"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-tools.png" width="760" alt="最新版高级工具与静态更新设置（模拟状态）"></p>
 
 ### 工具栏学习概览
 
-<p align="center"><img src="docs/screenshots/popup.png" width="360" alt="工具栏弹窗：今日与最近30天观看统计、最近学习位置"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-popup.png" width="360" alt="工具栏弹窗：今日与最近30天观看统计、最近学习位置"></p>
 
 <details>
 <summary>查看窄屏设置页与成绩页</summary>
 
 窄屏截图用于展示响应式布局，不代表移动端浏览器已支持安装本扩展。
 
-<p align="center"><img src="docs/screenshots/settings-mobile.png" width="320" alt="390像素窄屏下的设置页"></p>
-<p align="center"><img src="docs/screenshots/grades-mobile.png" width="320" alt="390像素窄屏下的课程成绩页"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="390像素窄屏下的设置页"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-uooc-grades-mobile.png" width="320" alt="390像素窄屏下的课程成绩页"></p>
 
 </details>
 
@@ -150,7 +152,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 | --- | --- | --- |
 | 连播、倍速、定时、观看统计 | 支持 | 已接入，真实连播待反馈 |
 | 课程与成绩总览 | 视频＋测验、当前得分及分项 | 章节任务点、综合成绩及分项；真实账号刷新已通过 |
-| 登录保持 | 统一开关，默认关闭 | 独立开关，默认关闭；真实登录检测待反馈 |
+| 登录保持 | 统一开关，默认关闭 | 统一开关，默认关闭；真实登录检测待反馈 |
 | DeepSeek 答题、视频弹题、保存及可选交卷 | 支持已适配题型 | 暂未开放，遇到测验请人工处理 |
 
 学习通当前适配桌面网页的章节学习页。受限 iframe、学校验证、图片题、考试及特殊课程入口可能需要人工处理。
@@ -338,12 +340,12 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 推测答案不保证正确。默认自动提交关闭；开启后仍按原有条件正式交卷，保存、交卷前会重新核对整份试卷。缺题或页面变化时不会直接提交。
 
-### 2.1.0 恢复面板预览
+### 最新版紧凑面板
 
-以下为模拟题目、模拟接口的界面截图，没有调用付费模型或提交真实课程。
+最新面板见上方双平台预览；发生中断时按提示选择继续答题或继续连播。
 
-<p align="center"><img src="docs/screenshots/recovery-desktop.png" width="1000" alt="2.1.0 答题进度与重试倒计时桌面演示"></p>
-<p align="center"><img src="docs/screenshots/recovery-mobile.png" width="320" alt="2.1.0 紧凑恢复面板窄屏演示"></p>
+
+
 
 ## 暂停与人工处理
 
@@ -475,4 +477,4 @@ uooc-helper/
 
 ### 2.1.3 按钮预览（模拟数据）
 
-<p><img src="docs/screenshots/buttons-2.1.3-popup.png" width="300" alt="醒目的设置入口"><img src="docs/screenshots/buttons-2.1.3-mobile.png" width="300" alt="删除密钥按钮窄屏预览"></p>
+<p><img src="docs/screenshots/latest-2.1.3-popup.png" width="300" alt="醒目的设置入口"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="300" alt="删除密钥按钮窄屏预览"></p>
