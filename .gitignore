@@ -21,3 +21,7 @@ build/
 *.zip
 *.log
 native-updater/*.exe
+
+# 开发测试输出
+.test-artifacts/
+package-lock.json.tmp

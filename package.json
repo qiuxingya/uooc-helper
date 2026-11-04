@@ -1,0 +1,15 @@
+{
+  "name": "uooc-helper",
+  "version": "2.1.0",
+  "private": true,
+  "description": "优课学习助手开发测试",
+  "scripts": {
+    "test": "node --test --test-concurrency=2 tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

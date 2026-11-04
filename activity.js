@@ -25,8 +25,8 @@
  }
  async function load(){const {activityData}=await chrome.storage.local.get('activityData');return prune(activityData||{days:{},recent:[],logs:[]},Date.now());}
  function merge(intervals,segment){const list=[...intervals,segment].sort((a,b)=>a[0]-b[0]),out=[];for(const [a,b] of list){const last=out.at(-1);if(last&&a<=last[1])last[1]=Math.max(b,last[1]);else out.push([a,b]);}return out;}
- const codes=new Set(['START','PAUSE','TIMER','VIDEO_END','PLAYBACK','QUESTION','SAVE','CONFIRM','VERIFY','MODEL','NETWORK','ADAPTER','MANUAL','UNKNOWN']);
- function logEntry(data,event,stage,code){data.logs.push({time:Date.now(),version:chrome.runtime.getManifest().version,event:['start','pause','error','complete','diagnostic','timer','stage'].includes(event)?event:'error',stage:['video','quiz','navigation','idle'].includes(stage)?stage:'idle',code:codes.has(code)?code:'UNKNOWN'});data.logs=data.logs.slice(-1000);}
+ const codes=new Set(['START','PAUSE','TIMER','VIDEO_END','PLAYBACK','QUESTION','SAVE','CONFIRM','VERIFY','MODEL','NETWORK','ADAPTER','MANUAL','UNKNOWN','AUTH','BALANCE','MODEL_UNAVAILABLE','SERVER','RATE_LIMIT','TIMEOUT','ANSWER_UNCERTAIN','ANSWER_FORMAT','ANSWER_INCOMPLETE','INVALID_RESPONSE','COMMUNICATION','CANCELLED','RETRY_EXHAUSTED','AUTOPLAY','VIDEO_TIMEOUT','VIDEO_START','VIDEO_CHANGED','PAGE_CHANGED','REQUEST_FAILED']);
+ function logEntry(data,event,stage,code){data.logs.push({time:Date.now(),version:chrome.runtime.getManifest().version,event:['start','pause','error','complete','diagnostic','timer','stage'].includes(event)?event:'error',stage:['video','quiz','navigation','idle','video_loading','playing','question','retry','save','submit','paused','complete','review'].includes(stage)?stage:'idle',code:codes.has(code)?code:'UNKNOWN'});data.logs=data.logs.slice(-1000);}
  async function report(message,sender){
   const now=Date.now(),data=await load(),url=route(sender.url),course=identity(url);
   const segments=Array.isArray(message.segments)?message.segments:[];
