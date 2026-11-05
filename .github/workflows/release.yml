@@ -40,5 +40,5 @@ jobs:
           }
           $version = (Get-Content manifest.json -Raw | ConvertFrom-Json).version
           $package = 'dist/uooc-helper-' + $version + '.zip'
-          gh release upload $env:RELEASE_TAG $package "dist/uooc-updater-windows.zip" "dist/SHA256SUMS.txt" --repo $env:GITHUB_REPOSITORY
+          gh release upload $env:RELEASE_TAG $package "dist/uooc-updater-windows.zip" "dist/update.json" "dist/SHA256SUMS.txt" --repo $env:GITHUB_REPOSITORY
           if ($LASTEXITCODE -ne 0) { throw 'Cannot upload release assets; check duplicate or immutable assets.' }

@@ -4,7 +4,7 @@
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.1.4';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.1.5';
   const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
@@ -93,7 +93,29 @@
   el('openGrades').onclick=()=>featureMessage('gradesOpen',{platform:globalThis.ChaoxingLearning?'chaoxing':'uooc'});
   const connected=!!chrome.runtime.onMessage?.addListener;
   const featureMessage=(type,data={})=>connected?chrome.runtime.sendMessage({type,...data}).then(r=>r?.error?null:r?.result).catch(()=>null):Promise.resolve(null);
-  async function refreshGradeSummary(){const data=await featureMessage(globalThis.ChaoxingLearning?'cxGradeSummary':'gradeSummary');const course=data?.course,snapshot=course?.snapshot;el('gradeSummary').textContent=!data?.verified?'网站完成度与成绩：请在总览中刷新确认账号':!snapshot?'网站完成度与成绩：尚未读取':((globalThis.ChaoxingLearning?'章节任务点 ':'视频＋测验 ')+(snapshot.progress.value===null?'暂无数据':snapshot.progress.value+'%')+(globalThis.ChaoxingLearning?' · 综合成绩 ':' · 当前得分 ')+(snapshot.current.state==='value'?snapshot.current.value:snapshot.current.state==='unpublished'?'未公布':'—')+(course.lastError?' · 上次刷新失败':'')+' · '+new Date(snapshot.updatedAt).toLocaleDateString());}
+  let gradeSummaryRequest=0;
+  function resetGradeSummary(){
+    gradeSummaryRequest++;
+    el('gradeSummary').textContent='网站完成度与成绩：待刷新';
+    if(!el('panel').hidden)refreshGradeSummary();
+  }
+  async function refreshGradeSummary(){
+    const request=++gradeSummaryRequest,address=location.href;
+    const chaoxing=!!globalThis.ChaoxingLearning;
+    const data=await featureMessage(chaoxing?'cxGradeSummary':'gradeSummary');
+    if(request!==gradeSummaryRequest||location.href!==address)return;
+    const course=data?.course,snapshot=course?.snapshot,label=el('gradeSummary');
+    if(!data?.verified){label.textContent='网站完成度与成绩：请在总览中刷新确认账号';return;}
+    if(!snapshot){label.textContent='网站完成度与成绩：尚未读取';return;}
+    const progress=snapshot.progress?.value;
+    const score=snapshot.current?.state==='value'?snapshot.current.value:snapshot.current?.state==='unpublished'?'未公布':'—';
+    const updatedAt=snapshot.progress?.updatedAt??snapshot.updatedAt;
+    const progressDate=Number.isFinite(updatedAt)&&updatedAt>0?' · 进度采集 '+new Date(updatedAt).toLocaleDateString():'';
+    const failure=course.lastError?(course.progressOnly?' · 进度与成绩分开采集':' · 上次刷新失败'):'';
+    label.textContent=(chaoxing?'章节任务点 ':'视频＋测验 ')+(progress==null?'暂无数据':progress+'%')+(chaoxing?' · 综合成绩 ':' · 当前得分 ')+score+failure+progressDate;
+  }
+  window.addEventListener('hashchange',resetGradeSummary);
+  window.addEventListener('popstate',resetGradeSummary);
   let position=null,drag=null,suppressClick=0,deadline=0,deadlineTimeout,run='',sessionMs=0,lastFlush=Date.now(),sampleState=null,segments=[],completedKeys=new Set(),completedNodes=new WeakMap(),lastStopCode='PAUSE',audio,alerted=new Set();
   function placePanel(){
     const box=el('panel');if(box.hidden)return;
@@ -118,7 +140,13 @@
   el('orb').addEventListener('pointerup',finishDrag);el('orb').addEventListener('pointercancel',finishDrag);window.addEventListener('resize',placeOrb);
   function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;if(globalThis.ChaoxingLearning){settings.autoSubmit=false;settings.autoExercises=false;el('autoSubmit').disabled=true;el('autoSubmit').title='学习通可编辑章节测验尚待适配，当前保留人工提交';el('solve').hidden=true;el('autoSubmit').closest('label').hidden=true;el('solve').disabled=true;el('solve').title='学习通可编辑章节测验样例尚未取得，暂保留人工作答';}el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':(globalThis.ChaoxingLearning?'学习通视频按顺序连播；遇到章节测验暂停。<br>可编辑测验尚待适配，当前请人工作答、保存及交卷。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。');if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;el('rate').value=String(settings.rate);resumeLabels();const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
   const settingsReady=connected?featureMessage('uiGet').then(data=>{if(data){applySettings(data.settings);position=data.position;placeOrb();}}):chrome.storage.sync.get('settings').then(data=>applySettings(data.settings));
-  chrome.storage.onChanged?.addListener((changes,area)=>{if(area==='sync'&&changes.settings?.newValue)applySettings(changes.settings.newValue);});
+  chrome.storage.onChanged?.addListener((changes,area)=>{
+    if(area==='sync'&&changes.settings?.newValue)applySettings(changes.settings.newValue);
+    const chaoxing=!!globalThis.ChaoxingLearning;
+    const account=area==='session'&&changes[chaoxing?'cxGradeAccount':'gradeAccount'];
+    if(account&&account.oldValue?.hash!==account.newValue?.hash)resetGradeSummary();
+    else if(area==='local'&&changes[chaoxing?'cxGradeCache':'gradeCache']&&!el('panel').hidden)refreshGradeSummary();
+  });
   el('autoSubmit').onchange=()=>{const autoSubmit=el('autoSubmit').checked;applySettings({...settings,autoSubmit});featureMessage('settingsPatch',{patch:{autoSubmit}});};
   el('rate').onchange=()=>{const rate=Number(el('rate').value);applySettings({...settings,rate});featureMessage('settingsPatch',{patch:{rate}});};
   function updateTimer(){const value=el('timer').value;el('timerCustom').hidden=value!=='custom';const minutes=value==='custom'?Number(el('timerCustom').value):Number(value);if(!Number.isInteger(minutes)||minutes<0||minutes>240||(value==='custom'&&!minutes)){say('自定义定时应为 1–240 分钟');return;}settings.timerMinutes=minutes;featureMessage('settingsPatch',{patch:{timerMinutes:minutes}});if(playing)say('定时设置将在下一次开始连播时生效');}
@@ -128,7 +156,7 @@
   function classify(){return 'UNKNOWN';}
   function failure(message,code){return Object.assign(Error(message),{code});}
   function record(event,code){featureMessage('eventLog',{event,code,stage:phase.toLowerCase()});}
-  function valid(token){if(deadline&&Date.now()>=deadline){stop('定时已到，已暂停；已填写内容保留','timer');return false;}return token===epoch;}
+  function valid(token){if(token!==epoch)return false;if(deadline&&Date.now()>=deadline){stop('定时已到，已暂停；已填写内容保留','timer');return false;}return true;}
   async function playVideo(v,token){
     const context=location.href,source=v.currentSrc||v.getAttribute('src')||'';if(!runCurrent(token,context)||!playing)return;
     if(globalThis.ChaoxingLearning)query('video').filter(other=>other!==v).forEach(other=>other.pause());
@@ -150,8 +178,8 @@
   async function beginRun(token){
     await settingsReady;if(token!==epoch||!playing)return;globalThis.UoocCatalog?.reset?.();if(el('timer').value==='custom'&&!el('timerCustom').checkValidity())throw Error('自定义定时应为 1–240 分钟');run=Date.now().toString(36)+'-'+epoch;sessionMs=0;completed=0;completedKeys=new Set();completedNodes=new WeakMap();sampleState=null;segments=[];alerted.clear();lastStopCode='START';
     deadline=settings.timerMinutes?Date.now()+settings.timerMinutes*60000:0;
-    if(deadline)deadlineTimeout=setTimeout(()=>{if(deadline&&Date.now()>=deadline)stop('定时已到，已暂停；已填写内容保留','timer');},Math.max(0,deadline-Date.now()));
-    const answer=await featureMessage('timerStart',{minutes:settings.timerMinutes,run});if(connected&&settings.timerMinutes&&!answer)throw Error('无法创建定时停止，请重新加载扩展后重试');record('start','START');renderStats();
+    if(deadline)deadlineTimeout=setTimeout(()=>valid(token),Math.max(0,deadline-Date.now()));
+    const answer=await featureMessage('timerStart',{minutes:settings.timerMinutes,run});if(!valid(token))return;if(connected&&settings.timerMinutes&&!answer)throw Error('无法创建定时停止，请重新加载扩展后重试');record('start','START');renderStats();
   }
   function meta(v){const context=globalThis.UoocCatalog?.context?.(v)||{};return {resource:context.resource||(/^#\/(?:\d+\/){2,}\w*$/.test(location.hash)?location.hash:null),position:{title:document.title,chapter:context.chapter||'当前视频',seconds:Number.isFinite(v?.currentTime)?v.currentTime:0}};}
   function renderStats(){el('sessionStats').textContent='本次 '+Math.floor(sessionMs/60000)+' 分 '+Math.floor(sessionMs/1000)%60+' 秒 · '+completed+' 个视频';el('countdown').textContent=deadline?'剩余 '+Math.max(0,Math.ceil((deadline-Date.now())/60000))+' 分钟后停止':'';}
@@ -450,7 +478,7 @@
         if(!playing||advancing||!valid(epoch)||!v.isConnected||!visible(v)||videoOwners.get(v)!==epoch) return;if(!finishVideo(v))return;globalThis.ChaoxingLearning?.markEnded(v);advancing=true;const token=epoch;say(`本次已播完 ${completed} 节，等待切换`);
         try {await wait();if(!valid(token)||!playing)return;if(blocked())throw Error('需要人工处理当前页面');
           await advance(token);
-          const nextVideo=await loadedVideo(token);if(!nextVideo)return;
+          const nextVideo=await loadedVideo(token);if(!nextVideo||!valid(token))return;
           bind();lastProgress=Date.now();lastTime=-1;await playVideo(nextVideo,token);if(!valid(token))return;
           say(`已切换，等待播放器；本次播完 ${completed} 节`);
         } catch(e){if(token===epoch)stop(e.message,'error',e.code);} finally{if(token===epoch)advancing=false;}
@@ -464,7 +492,7 @@
     if(blocked()){stop('遇到考试或验证，请人工处理','error','MANUAL');return;}
     if(globalThis.UoocCatalog?.gateNotice?.()){advancing=true;try{await advance(tickToken,false,true);const v=await loadedVideo(tickToken);if(v)await playVideo(v,tickToken);}finally{if(tickToken===epoch)advancing=false;}return;}
     const pending=questions();
-    if(pending.length&&!(inlineVideoFor(pending)&&pending.every(q=>savedQuestions.get(q.root)===q.signature))){advancing=true;try{const v=await loadedVideo(tickToken);if(v){bind();lastProgress=Date.now();await playVideo(v,tickToken);}}finally{advancing=false;}return;}
+    if(pending.length&&!(inlineVideoFor(pending)&&pending.every(q=>savedQuestions.get(q.root)===q.signature))){advancing=true;try{const v=await loadedVideo(tickToken);if(v&&valid(tickToken)){bind();lastProgress=Date.now();await playVideo(v,tickToken);}}finally{if(tickToken===epoch)advancing=false;}return;}
     const list=videos();if(!list.length&&!pending.length&&globalThis.UoocCatalog?.picker?.()){if(!pickerIdleSince)pickerIdleSince=Date.now();if(Date.now()-pickerIdleSince>=1500){pickerIdleSince=0;const token=epoch;advancing=true;try{log('检测到资源选择占位页，继续查找视频');await advance(token,true);const nextVideo=await loadedVideo(token);if(nextVideo&&valid(token)){bind();lastProgress=Date.now();await playVideo(nextVideo,token);}}finally{if(token===epoch)advancing=false;}}return;}pickerIdleSince=0;if(list.length!==1){if(Date.now()-lastProgress>20000)stop('未找到唯一可见播放器，请手动进入视频页','error','UNSUPPORTED');return;}
     const v=list[0];if(v.currentTime!==lastTime){lastTime=v.currentTime;lastProgress=Date.now();}
     if(Date.now()-lastProgress>45000){stop('播放停滞，请检查网络或手动播放','error','PLAYBACK');return;}
@@ -481,8 +509,8 @@
       playing=true;advancing=true;el('play').disabled=true;prepareAudio();await beginRun(token);if(!valid(token))return;say('正在打开视频资源','VIDEO_LOADING');
       let list=videos();
       if(!list.length && !questions().length && globalThis.UoocCatalog?.available())await advance(token,true);
-      const v=await loadedVideo(token);if(!v)return;
-      lastProgress=Date.now();lastTime=-1;bind();await playVideo(v,epoch);if(!valid(token))return;
+      const v=await loadedVideo(token);if(!v||!valid(token))return;
+      lastProgress=Date.now();lastTime=-1;bind();await playVideo(v,token);if(!valid(token))return;
       say('正在连续播放，视频结束后切换');
     }catch(e){if(token===epoch)stop(e.message,'error',e.code);}finally{if(token===epoch)advancing=false;}
   };

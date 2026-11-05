@@ -30,7 +30,7 @@
   if(!data||!['read','unpublished'].includes(data.state)||!Array.isArray(data.rows)||data.rows.length>50)throw Error('READ_FAILED');
   const fields=['weight','total','finished','average','progress','weighted'];const rows=data.rows.map(row=>{if(typeof row.label!=='string'||!row.label.trim())throw Error('READ_FAILED');return Object.fromEntries([['label',clip(row.label,64)],...fields.map(k=>[k,scalar(row[k])])]);});
   const progress=data.progress;if(!progress||!['website','tasks','none'].includes(progress.source)||(progress.value!==null&&(!Number.isFinite(progress.value)||progress.value<0||progress.value>100)))throw Error('READ_FAILED');
-  return {updatedAt:Date.now(),state:data.state,current:scalar(data.current),final:scalar(data.final),progress:{value:progress.value,source:progress.source},rows};
+  return {updatedAt:Date.now(),state:data.state,current:scalar(data.current),final:scalar(data.final),progress:{value:progress.value,source:progress.source,...(progress.source==='tasks'&&Number.isSafeInteger(progress.done)&&Number.isSafeInteger(progress.total)&&progress.done>=0&&progress.total>0&&progress.done<=progress.total?{done:progress.done,total:progress.total}:{})},rows};
  }
  async function nextScore(job){
   if(job.index>=job.targets.length){await schedule(job,'account',CENTER+'learn');return;}

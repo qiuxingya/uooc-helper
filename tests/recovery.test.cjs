@@ -73,6 +73,32 @@ test('interrupted player retries once, autoplay denial never loops',async()=>{
 test('late player result cannot pause a newer playback owner',async()=>{
  const p=await setup('<video style="width:400px;height:200px"></video>');try{await mockVideo(p,'never');await click(p,'play');await p.waitForFunction(()=>plays===1);await click(p,'stop');await p.evaluate(()=>{document.querySelector('video').play=async()=>{plays++;running=true;};});await click(p,'play');await until(p,'正在连续播放');const pauses=await p.evaluate(()=>window.pauses);await p.evaluate(()=>releasePlay());await p.waitForTimeout(200);assert.equal(await p.evaluate(()=>window.pauses),pauses);assert.equal(await p.evaluate(()=>running),true);}finally{await p.close();}
 });
+test('旧答题巡检结束时不能解锁新一轮播放器启动',async()=>{
+ const p=await setup('<video style="width:400px;height:200px"></video>');
+ try{
+  await mockVideo(p,'abort');await click(p,'play');await until(p,'正在连续播放');
+  await p.evaluate(html=>{
+   document.body.insertAdjacentHTML('beforeend','<div role="dialog" style="position:fixed;left:20px;top:20px">'+html+'</div>');
+   respond=()=>new Promise(resolve=>window.releaseOldAnswer=resolve);
+   window.oldTick=ticks[1500]();
+  },radio(1));
+  await p.waitForFunction(()=>!!window.releaseOldAnswer,null,{timeout:5000});
+  await p.evaluate(()=>{
+   panel.getElementById('stop').click();
+   document.querySelector('[role=dialog]').remove();
+   document.querySelector('video').play=()=>{plays++;return new Promise(resolve=>window.releaseNewPlay=()=>{running=true;resolve();});};
+   panel.getElementById('play').click();
+  });
+  await p.waitForFunction(()=>!!window.releaseNewPlay,null,{timeout:5000});
+  const started=await p.evaluate(()=>plays);
+  await p.evaluate(async()=>{
+   releaseOldAnswer({result:defaultResult({type:'single'})});await oldTick;
+   void ticks[1500]();await new Promise(resolve=>setTimeout(resolve,0));
+  });
+  assert.equal(await p.evaluate(()=>plays),started);
+  await p.evaluate(()=>releaseNewPlay());await until(p,'正在连续播放');
+ }finally{await p.close();}
+});
 test('narrow review stays in bounds and diagnostics omit question and answer text',async()=>{
  const p=await setup(radio(1));try{await click(p,'orb');await click(p,'solve');await until(p,'填写完成');await p.locator('input').first().check();await click(p,'solve');await until(p,'请确认采用页面答案');await p.setViewportSize({width:390,height:844});await click(p,'inspect');const info=await p.evaluate(()=>panel.getElementById('diagnosticText').textContent);assert.ok(!info.includes('演示题'));assert.ok(!info.includes('模拟'));const rect=await p.evaluate(()=>{const b=panel.getElementById('panel').getBoundingClientRect();return {left:b.left,right:b.right,top:b.top,bottom:b.bottom};});assert.ok(rect.left>=0&&rect.right<=390&&rect.top>=0&&rect.bottom<=844);await p.screenshot({path:'.test-artifacts/recovery-mobile.png'});await click(p,'stop');}finally{await p.close();}
 });

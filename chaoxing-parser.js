@@ -4,7 +4,7 @@
  const id=v=>typeof v==='string'&&/^\d{1,20}$/.test(v);
  const numeric=value=>{const s=String(value??'').trim();return /^-?\d+(?:\.\d+)?$/.test(s)&&Number.isFinite(Number(s))?Number(s):null;};
  const value=raw=>{const n=numeric(raw);return n!==null?{state:'value',value:n}:/未公布|未发布|暂未/.test(raw||'')?{state:'unpublished',value:null}:{state:'unread',value:null};};
- const count=(root,a,b)=>{const done=numeric(text(root.querySelector(a))),total=numeric(text(root.querySelector(b)));return done!==null&&total!==null&&Number.isInteger(done)&&Number.isInteger(total)&&done<=total?{done,total}:null;};
+ const count=(root,a,b)=>{const done=numeric(text(root.querySelector(a))),total=numeric(text(root.querySelector(b)));return done!==null&&total!==null&&Number.isSafeInteger(done)&&Number.isSafeInteger(total)&&done>=0&&done<=total?{done,total}:null;};
  function readList(root=document){
   if(!root.querySelector('#stukc'))return null;
   const courses=[],accounts=new Set(),keys=new Set();

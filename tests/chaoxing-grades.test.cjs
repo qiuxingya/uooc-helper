@@ -30,3 +30,29 @@ test('expired scan page after worker restart preserves old grades and still rech
 test('worker restart with a missing scan tab leaves other tabs untouched',async()=>{const old=environment();await listed(old);const e=environment(old.local,old.session);e.tabs.set(99,{url:'https://i.chaoxing.com/base'});await e.api.restore();assert.equal(e.session.cxGradeJob.error,'TAB_CLOSED');assert.ok(e.tabs.has(99));assert.deepEqual(e.closed,[7]);assert.equal(e.alarms.size,0);});
 
 test('30-day cleanup and manual clearing affect only the intended account snapshots',async()=>{const now=Date.now(),other='b'.repeat(64),fresh={cycleId:'10:20',seenAt:now,snapshot:{updatedAt:now,current:{state:'value',value:10}}};const e=environment({cxGradeCache:{version:1,accounts:{[account]:{courses:{'10:20':fresh,'10:21':{...fresh,cycleId:'10:21',seenAt:now-31*86400000},'10:22':{...fresh,cycleId:'10:22',snapshot:{updatedAt:now-31*86400000}}}},[other]:{courses:{'10:20':fresh}}}}},{cxGradeAccount:{hash:account}});await e.api.restore();let r=await e.send('cxGradesGet');assert.equal(r.courses.length,2);assert.equal(r.courses.find(c=>c.cycleId==='10:22').snapshot,null);await e.send('cxGradesClear');assert.equal((await e.send('cxGradesGet')).courses.length,0);assert.ok(e.local.cxGradeCache.accounts[other]);});
+
+
+test('成绩页超时后，账号复核通过仍保留新进度和旧成绩时间',async()=>{
+ const oldTime=Date.now()-86400000;
+ const e=environment({cxGradeCache:{version:1,accounts:{[account]:{courses:{'10:20':{cycleId:'10:20',seenAt:oldTime,snapshot:{updatedAt:oldTime,current:{state:'value',value:70},progress:{value:25},rows:[]}}}}}}});
+ await listed(e);await e.answer(progress);await e.answer(null,'PAGE_TIMEOUT');
+ assert.equal((await e.send('cxGradesGet')).verified,false);
+ await e.answer(center);await e.answer(list);
+ const view=await e.send('cxGradesGet'),course=view.courses[0];
+ assert.equal(course.progressOnly,true);assert.equal(course.snapshot.progress.value,75);
+ assert.equal(course.snapshot.progress.done,3);assert.equal(course.snapshot.progress.total,4);
+ assert.equal(course.snapshot.current.value,70);assert.equal(course.snapshot.updatedAt,oldTime);
+ assert.ok(course.snapshot.progress.updatedAt>oldTime);assert.equal(course.lastError,'PAGE_TIMEOUT');
+});
+
+test('无成绩缓存时，成绩失败仍展示已验证进度，账号切换则不公布',async()=>{
+ const e=environment();await listed(e);await e.answer(progress);await e.answer(null,'PAGE_TIMEOUT');await e.answer(center);await e.answer(list);
+ const course=(await e.send('cxGradesGet')).courses[0];assert.equal(course.snapshot.progress.value,75);assert.equal(course.snapshot.current.state,'unread');
+ const changed=environment();await listed(changed);await changed.answer(progress);await changed.answer(null,'PAGE_TIMEOUT');await changed.answer(center);await changed.answer({...list,account:'b'.repeat(64)});assert.equal((await changed.send('cxGradesGet')).verified,false);assert.equal(changed.local.cxGradeCache,undefined);
+});
+
+
+test('较新的进度不会延长旧成绩的缓存有效期',async()=>{
+ const now=Date.now(),e=environment({cxGradeCache:{version:1,accounts:{[account]:{courses:{'10:20':{cycleId:'10:20',seenAt:now,snapshot:{updatedAt:now-31*86400000,current:{state:'value',value:70}},progressSnapshot:{value:75,updatedAt:now}}}}}}},{cxGradeAccount:{hash:account}});
+ const course=(await e.send('cxGradesGet')).courses[0];assert.equal(course.snapshot.progress.value,75);assert.equal(course.snapshot.current.state,'unread');assert.equal(course.snapshot.updatedAt,null);
+});

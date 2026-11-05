@@ -8,8 +8,11 @@
  function number(value){const s=String(value??'').trim();if(!/^-?\d+(?:\.\d+)?%?$/.test(s))return null;const n=Number(s.replace('%',''));return Number.isFinite(n)?n:null;}
  function cell(value){const raw=String(value??'').trim().slice(0,100);return {value:number(raw),state:/未公布|待公布|未发布|未出分/.test(raw)?'unpublished':number(raw)!==null?'value':raw?'unavailable':'loading',text:raw};}
  function readScore(){
+  const pageText=text(document.body);
+  const completion=pageText.normalize('NFKC').match(/您已完成\s*[:：]\s*(\d+(?:\.\d+)?)\s*%/);
+  let progress=completion&&Number(completion[1])<=100?{value:Number(completion[1]),source:'website'}:{value:null,source:'none'};
   const table=Array.from(document.querySelectorAll('table')).find(t=>visible(t)&&/考核项/.test(text(t))&&/加权得分/.test(text(t)));
-  if(!table){if(/暂无成绩|成绩未公布|成绩尚未公布|成绩未发布/.test(text(document.body)))return {state:'unpublished',current:cell('未公布'),final:cell('未公布'),progress:{value:null,source:'none'},rows:[]};return null;}
+  if(!table){if(/暂无成绩|成绩未公布|成绩尚未公布|成绩未发布/.test(pageText))return {state:'unpublished',current:cell('未公布'),final:cell('未公布'),progress,rows:[]};return null;}
   const headers=Array.from(table.querySelectorAll('thead th,thead td')).map(text);const fields={weight:'权重',total:'任务数',finished:'完成数',average:'平均分数',progress:'完成进度',weighted:'加权得分'};
   if(!headers.includes('考核项')||Object.values(fields).some(f=>!headers.includes(f)))throw Error('UNSUPPORTED_TABLE');
   const rows=[];let current=cell('—'),final=cell('—');
@@ -27,13 +30,11 @@
   const gradeLoaded=rows.some(r=>r.weight.value!==null&&r.total.value!==null&&r.finished.value!==null&&r.weighted.value!==null);
   if(!gradeLoaded||current.state==='loading'||final.state==='loading'||rows.some(r=>['签到','视频','作业','测验','讨论','考试','教师调分'].includes(r.label)&&Object.keys(fields).some(k=>r[k].state==='loading')))return null;
   for(const row of rows)for(const key of Object.keys(fields))if(row[key].state==='loading')row[key]={value:null,state:'unavailable',text:''};
-  let progress={value:null,source:'none'};
-  const completion=text(document.body).match(/您已完成\s*[:：]\s*(\d+(?:\.\d+)?)\s*%/);
-  if(completion&&Number(completion[1])<=100)progress={value:Number(completion[1]),source:'website'};
-  else{
+  if(progress.value===null){
    const video=rows.find(r=>r.label==='视频'),quiz=rows.find(r=>r.label==='测验');
-   if(video&&quiz&&[video,quiz].every(r=>Number.isInteger(r.total.value)&&Number.isInteger(r.finished.value)&&r.total.value>=0&&r.finished.value>=0&&r.finished.value<=r.total.value)){
-    const total=video.total.value+quiz.total.value;if(total>0)progress={value:Math.round((video.finished.value+quiz.finished.value)/total*10000)/100,source:'tasks'};
+   if(video&&quiz&&[video,quiz].every(r=>Number.isSafeInteger(r.total.value)&&Number.isSafeInteger(r.finished.value)&&r.total.value>=0&&r.finished.value>=0&&r.finished.value<=r.total.value)){
+    const total=video.total.value+quiz.total.value,done=video.finished.value+quiz.finished.value;
+    if(Number.isSafeInteger(total)&&total>0)progress={value:Math.round(done/total*10000)/100,source:'tasks',done,total};
    }
   }
   return {state:'read',current,final,progress,rows};

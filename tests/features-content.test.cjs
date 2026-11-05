@@ -19,6 +19,31 @@ async function setup(settings={},extra=''){
 }
 const click=(p,id)=>p.evaluate(id=>window.panel.getElementById(id).click(),id);
 const state=p=>p.evaluate(()=>window.panel.getElementById('state').textContent);
+test('课程悬浮摘要丢弃账号变化前的迟到成绩',async()=>{
+ const p=await setup();
+ try{
+  await p.evaluate(()=>{
+   const original=chrome.runtime.sendMessage;
+   let calls=0;
+   chrome.runtime.sendMessage=message=>{
+    if(message.type!=='gradeSummary')return original(message);
+    if(++calls===1)return Promise.resolve({result:{verified:true,course:{snapshot:{progress:{value:42}}}}});
+    if(calls===2)return new Promise(resolve=>window.resolveOldGrade=resolve);
+    return Promise.resolve({result:{verified:false,course:null}});
+   };
+  });
+  await click(p,'orb');
+  const summary=()=>p.evaluate(()=>window.panel.getElementById('gradeSummary').textContent);
+  assert.match(await summary(),/42%/);
+  await click(p,'minimize');await click(p,'orb');
+  await p.evaluate(async()=>{
+   changeSettings({gradeAccount:{oldValue:{hash:'old'}}},'session');
+   resolveOldGrade({result:{verified:true,course:{snapshot:{progress:{value:99}}}}});
+   await new Promise(resolve=>setTimeout(resolve,0));
+  });
+  assert.match(await summary(),/确认账号/);
+ }finally{await p.close();}
+});
 async function tick(page,seconds=1,progress=2){await page.evaluate(({seconds,progress})=>{window.clockOffset+=seconds*1000;window.videoTime+=progress;window.intervals[1000]();},{seconds,progress});}
 test('drag persists position without opening and expanded panel stays visible after resize',async()=>{
  const p=await setup();try{
