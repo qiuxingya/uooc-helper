@@ -4,7 +4,7 @@
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.1.5';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.1.6';
   const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';

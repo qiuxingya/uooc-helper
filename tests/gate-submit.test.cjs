@@ -13,6 +13,68 @@ test('submission opens confirmation once, confirms once, acknowledges success an
 test('captcha and unanswered warning both stop before final submission',async()=>{
  for(const body of ['<div id="sc">请完成智能验证</div>','<div id="notComplete">还有1题未做完</div>']){const p=await submitSetup();try{await p.evaluate(body=>document.querySelector('#submit').onclick=()=>{counts.open++;document.body.insertAdjacentHTML('beforeend','<div id="commitConfirmDialog">提交试卷'+body+'<button id="confirm">确认提交</button></div>');document.querySelector('#confirm').onclick=()=>counts.confirm++;},body);assert.match((await run(p)).error,/验证|未完成/);assert.equal(await p.evaluate(()=>counts.confirm),0);}finally{await p.close();}}
 });
+test('唯一的点击验证按钮只触发一次，网站明确通过后才交卷',async()=>{
+ const p=await submitSetup();
+ try{
+  await p.evaluate(()=>{
+   counts.verify=0;
+   document.querySelector('#submit').onclick=()=>{
+    document.body.insertAdjacentHTML('beforeend','<div id="commitConfirmDialog"><h3>提交试卷</h3><div id="sc"><p>请完成智能验证</p><button id="verify">点击按钮进行验证</button></div><button id="confirm">确认提交</button></div>');
+    document.querySelector('#verify').onclick=()=>counts.verify++;
+    document.querySelector('#confirm').onclick=()=>{
+     counts.confirm++;document.querySelector('#commitConfirmDialog').innerHTML='<div class="layui-layer-content">测验提交成功</div>';
+    };
+   };
+  });
+  const submitting=run(p);
+  await p.waitForFunction(()=>counts.verify===1);
+  assert.equal(await p.evaluate(()=>counts.confirm),0);
+  await p.locator('#sc').evaluate(e=>e.innerHTML='<p>验证通过</p>');
+  assert.deepEqual(await submitting,{ok:true});
+  assert.deepEqual(await p.evaluate(()=>[counts.verify,counts.confirm]),[1,1]);
+ }finally{await p.close();}
+});
+test('优课真实控件结构的复选框触发一次，提交 div 解锁后才点击',async()=>{
+ const p=await submitSetup();
+ try{
+  await p.evaluate(()=>{
+   counts.verify=0;
+   document.querySelector('#submit').onclick=()=>{
+    document.body.insertAdjacentHTML('beforeend',`<div id="commitConfirmDialog"><h3>提交试卷</h3>
+     <div id="sc"><div id="aliyunCaptcha-checkbox-body"><div id="aliyunCaptcha-checkbox-left"><span>点击复选框开始智能验证</span></div></div></div>
+     <div class="btn btn-warning" ng-disabled="!vcode_params.captchaVerifyParam" ng-click="vm.doCommitTask()" disabled="disabled">提交</div>
+    </div>`);
+    document.querySelector('#aliyunCaptcha-checkbox-body').onclick=()=>counts.verify++;
+    document.querySelector('[ng-disabled]').onclick=()=>{
+     counts.confirm++;document.querySelector('#commitConfirmDialog').innerHTML='<div class="layui-layer-content">测验提交成功</div>';
+    };
+   };
+  });
+  const submitting=run(p);
+  await p.waitForFunction(()=>counts.verify===1);
+  assert.deepEqual(await p.evaluate(()=>[counts.verify,counts.confirm]),[1,0]);
+  await p.locator('[ng-disabled]').evaluate(e=>e.removeAttribute('disabled'));
+  assert.deepEqual(await submitting,{ok:true});
+  assert.deepEqual(await p.evaluate(()=>[counts.verify,counts.confirm]),[1,1]);
+ }finally{await p.close();}
+});
+test('滑块、歧义按钮和验证成功后的说明文字不会触发交卷',async()=>{
+ for(const gate of ['<p>请拖动滑块</p><button>点击验证</button>','<button>点击验证</button><button>开始验证</button>','<p>请完成智能验证</p><p>验证成功后可提交</p>']){
+  const p=await submitSetup();
+  try{
+   await p.evaluate(gate=>{
+    counts.verify=0;
+    document.querySelector('#submit').onclick=()=>{
+     document.body.insertAdjacentHTML('beforeend','<div id="commitConfirmDialog"><h3>提交试卷</h3><div id="sc">'+gate+'</div><button id="confirm">确认提交</button></div>');
+     document.querySelectorAll('#sc button').forEach(button=>button.onclick=()=>counts.verify++);
+     document.querySelector('#confirm').onclick=()=>counts.confirm++;
+    };
+   },gate);
+   assert.match((await run(p)).error,/手动完成验证/);
+   assert.deepEqual(await p.evaluate(()=>[counts.verify,counts.confirm]),[0,0]);
+  }finally{await p.close();}
+ }
+});
 test('disabling switch or changing answers before confirm prevents submit',async()=>{
  for(const kind of ['enabled','verified']){const p=await submitSetup();try{await p.evaluate(kind=>document.querySelector('#submit').onclick=()=>{document.body.insertAdjacentHTML('beforeend','<div role="dialog">确认提交<button id="confirm">确定</button></div>');window[kind]=false;document.querySelector('#confirm').onclick=()=>counts.confirm++;},kind);const result=await run(p);if(kind==='verified')assert.match(result.error,/答案发生变化/);else assert.equal(result.ok,false);assert.equal(await p.evaluate(()=>counts.confirm),0);}finally{await p.close();}}
 });
