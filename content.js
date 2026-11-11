@@ -4,7 +4,7 @@
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.1.6';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.1.7';
   const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
@@ -181,7 +181,19 @@
     if(deadline)deadlineTimeout=setTimeout(()=>valid(token),Math.max(0,deadline-Date.now()));
     const answer=await featureMessage('timerStart',{minutes:settings.timerMinutes,run});if(!valid(token))return;if(connected&&settings.timerMinutes&&!answer)throw Error('无法创建定时停止，请重新加载扩展后重试');record('start','START');renderStats();
   }
-  function meta(v){const context=globalThis.UoocCatalog?.context?.(v)||{};return {resource:context.resource||(/^#\/(?:\d+\/){2,}\w*$/.test(location.hash)?location.hash:null),position:{title:document.title,chapter:context.chapter||'当前视频',seconds:Number.isFinite(v?.currentTime)?v.currentTime:0}};}
+  function courseName(){
+    const clean=globalThis.UoocPlatforms?.courseTitle||((value)=>value?.trim()||'');
+    const selectors=['.course-name','.courseName','.course-name-title','.course-title','.courseTitle','header h1','header h2','header h3','h1,h2,h3'];
+    for(const selector of selectors){
+      for(const heading of document.querySelectorAll(selector)){
+        if(!visible(heading)||heading.closest('#uooc-learning-helper,.ti,.question,fieldset,.smallTest-view,.examMain,#coursetree'))continue;
+        const name=clean(heading.textContent);
+        if(name)return name;
+      }
+    }
+    return clean(document.title);
+  }
+  function meta(v){const context=globalThis.UoocCatalog?.context?.(v)||{};return {resource:context.resource||(/^#\/(?:\d+\/){2,}\w*$/.test(location.hash)?location.hash:null),position:{title:courseName(),chapter:context.chapter||'当前视频',seconds:Number.isFinite(v?.currentTime)?v.currentTime:0}};}
   function renderStats(){el('sessionStats').textContent='本次 '+Math.floor(sessionMs/60000)+' 分 '+Math.floor(sessionMs/1000)%60+' 秒 · '+completed+' 个视频';el('countdown').textContent=deadline?'剩余 '+Math.max(0,Math.ceil((deadline-Date.now())/60000))+' 分钟后停止':'';}
   function sample(force=false){
     const now=Date.now(),list=videos(),v=list.length===1?list[0]:null;
@@ -233,10 +245,23 @@
     while(doc!==document){const frame=doc.defaultView?.frameElement;if(!frame)break;const r=frame.getBoundingClientRect();x+=r.left;y+=r.top;doc=frame.ownerDocument;}
     return {left:x,top:y,right:x+rect.width,bottom:y+rect.height};
   }
-  function activeQuestionRoot(root){
+  function assessmentDocuments(){
+    const docs=documents(),withSave=docs.filter(doc=>saveButtons(doc,true).length);
+    if(withSave.length)return withSave;
+    const assessments=docs.filter(doc=>/\/(exam|homework|test)(\/|$)/i.test(doc.location.pathname)
+      ||Array.from(doc.querySelectorAll('.testPaperShow,.smallTest-view,[data-task-type=quiz]')).some(visible));
+    return assessments.length?assessments:docs;
+  }
+  function activeQuestionRoot(root,scopes=assessmentDocuments()){
     if(!root.isConnected||!visible(root)||root.closest('[aria-hidden=true],[inert]'))return false;
+    const doc=root.ownerDocument;
+    if(!scopes.includes(doc))return false;
+    if(!settings.questionSelector){
+      const regions=Array.from(doc.querySelectorAll('.testPaperShow,.smallTest-view,[data-task-type=quiz]')).filter(visible);
+      if(regions.length&&!regions.some(region=>region.contains(root)))return false;
+    }
     // Standalone assessments retain their save workflow even alongside a video.
-    if(/\/(exam|homework|test)(\/|$)/i.test(root.ownerDocument.location.pathname)||saveButtons().length)return true;
+    if(/\/(exam|homework|test)(\/|$)/i.test(doc.location.pathname)||saveButtons(doc,true).length)return true;
     const list=videos();if(list.length!==1)return true;
     const v=list[0],overlay=root.closest(overlaySelector);
     const a=pageRect(root),b=pageRect(v);
@@ -246,15 +271,16 @@
     return overlaps || !!(overlay&&visible(overlay)&&v.paused&&!v.ended);
   }
   function questions() {
-    let roots=(globalThis.ChaoxingLearning&&!settings.questionSelector?ChaoxingLearning.questionRoots():query(settings.questionSelector || '.ti,.question-item,.question_item,.question,fieldset,[data-question-id],.exam-item,.test-item')).filter(visible);
+    const scopes=assessmentDocuments(),collect=selector=>scopes.flatMap(doc=>query(selector,doc));
+    let roots=(globalThis.ChaoxingLearning&&!settings.questionSelector?ChaoxingLearning.questionRoots():collect(settings.questionSelector || '.ti,.question-item,.question_item,.question,fieldset,[data-question-id],.exam-item,.test-item')).filter(visible);
     if(!roots.length) {
       const groups=new Map();
-      query('input[type=radio],input[type=checkbox],input[type=text],input:not([type]),input[type=number]').filter(visible).forEach(input=>{
+      collect('input[type=radio],input[type=checkbox],input[type=text],input:not([type]),input[type=number]').filter(visible).forEach(input=>{
         const root=input.closest('fieldset,li,section,article') || input.parentElement?.parentElement;
         if(root) groups.set(root,true);
       });roots=[...groups.keys()];
     }
-    roots=roots.filter(r=>!globalThis.ChaoxingLearning?.isReview(r.ownerDocument)&&activeQuestionRoot(r)&&!roots.some(other=>other!==r && r.contains(other)));
+    roots=roots.filter(r=>!globalThis.ChaoxingLearning?.isReview(r.ownerDocument)&&activeQuestionRoot(r,scopes)&&!roots.some(other=>other!==r && r.contains(other)));
     return roots.map(root=>{
       const inputs=query('input[type=radio],input[type=checkbox]',root);
       const stem=settings.stemSelector ? root.querySelector(settings.stemSelector) : root.querySelector('.ti-q-c,.question-title,.question_title,.stem,legend,[data-stem]');
@@ -281,9 +307,9 @@
     let selectedTarget=null;if(!settings.nextSelector&&globalThis.UoocCatalog?.available())await globalThis.UoocCatalog.advance(()=>!valid(token)||!playing,250,initial,settings.autoExercises,{onSelect:target=>selectedTarget=target,laterChapter:laterChapter||!!globalThis.UoocCatalog.gateNotice?.(),onSkip:()=>{log('检测到锁定或闯关限制，尝试后续可进入的章节');record('stage','ADAPTER');}});
     else {if(!valid(token)||!playing)return;selectedTarget=next();selectedTarget.click();}return selectedTarget;
   }
-  function saveButtons(){return query('button,a,[role=button],input[type=button]').filter(e=>visible(e)&&!e.disabled&&/^(保存试卷|保存答案)$/.test((e.innerText||e.value||'').trim()));}
+  function saveButtons(root,includeDisabled=false){return query('button,a,[role=button],input[type=button]',root).filter(e=>visible(e)&&(includeDisabled||!e.disabled&&!e.hasAttribute('disabled')&&e.getAttribute('aria-disabled')!=='true')&&/^(保存试卷|保存答案)$/.test((e.innerText||e.value||'').trim()));}
   function inlineVideoFor(items){
-    if(saveButtons().length || items.some(q=>/\/(exam|homework|test)(\/|$)/i.test(q.root.ownerDocument.location.pathname)))return null;
+    if(items.some(q=>saveButtons(q.root.ownerDocument,true).length||/\/(exam|homework|test)(\/|$)/i.test(q.root.ownerDocument.location.pathname)))return null;
     const list=videos();return list.length===1&&!list[0].ended?list[0]:null;
   }
   async function confirmInline(items,token){
@@ -357,8 +383,9 @@
       const current=questions();
       if(!sameQuestions(previous,current)){previous=current;stableAt=Date.now();}
       const docs=[...new Set(current.map(q=>q.root.ownerDocument))];
+      if(docs.length>1&&docs.some(doc=>saveButtons(doc,true).length))throw failure('检测到多个测验页面，请只保留当前测验后继续','UNSUPPORTED');
       const complete=current.length>0&&docs.every(doc=>{
-        const count=query('.ti',doc).filter(activeQuestionRoot).length;
+        const count=query('.ti',doc).filter(root=>activeQuestionRoot(root)).length;
         const expected=[...((doc.querySelector('.queList')?.innerText||'').matchAll(/共\s*(\d+)\s*题/g))].reduce((sum,m)=>sum+Number(m[1]),0);
         const recognized=current.filter(q=>q.root.ownerDocument===doc).length;
         return count<=recognized&&(!expected||recognized===expected);
@@ -374,7 +401,7 @@
   async function saveAnswers(token,batch){
     if(!valid(token))return false;
     if(!verifiedBatch(batch))throw failure('当前测验尚未全部答完或答案发生变化，未点击保存','SAVE');
-    const buttons=saveButtons();
+    const buttons=saveButtons(batch.items[0].root.ownerDocument);
     const specific=buttons.filter(e=>/保存试卷|保存答案/.test(e.innerText||e.value||''));
     const list=specific.length?specific:buttons;
     if(list.length!==1)throw failure('未找到唯一的答案保存按钮，已暂停','SAVE');
@@ -520,7 +547,7 @@
       record('stage','QUESTION');say('等待当前测验题目加载完成','QUESTION');
       const context=location.href,items=await readyQuestions(token);if(!items||!valid(token))return null;
       const batch={context,items,documents:items.map(q=>q.root.ownerDocument.URL),answers:[]};
-      const count=query('.ti').filter(activeQuestionRoot).length;
+      const count=query('.ti').filter(root=>activeQuestionRoot(root)).length;
       if(count>items.length)throw Error('包含未识别或不支持的题型，已暂停，请人工处理');
       if(checkpoint.context!==context)checkpoint={context,records:new Map()};
       const currentRoots=new Set(items.map(q=>q.root));for(const root of checkpoint.records.keys())if(!currentRoots.has(root))checkpoint.records.delete(root);

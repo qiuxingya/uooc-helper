@@ -23,6 +23,80 @@ async function setup(html=fixture,settings={}){
 }
 async function click(page,id){await page.evaluate(id=>window.panel.getElementById(id).click(),id);}
 async function state(page){return page.evaluate(()=>window.panel.getElementById('state').textContent);}
+async function assessmentWithHistory({sameDocument=false,autoSubmit=false,disabledSave=false}={}){
+ const history='<section id="history"><div class="quizLayer"><div class="ti"><fieldset><legend>残留视频弹题</legend><label><input name="history" type="radio">正确</label><label><input name="history" type="radio">错误</label></fieldset></div></div><div class="mpopup-bottom"><button id="staleConfirm">确定</button></div></section>';
+ const page=await setup((sameDocument?'':'<iframe id="assessment" style="width:900px;height:500px"></iframe>')+history+'<button id="next">下一节</button>',{nextSelector:'#next',autoSubmit});
+ const count=sameDocument?1:10;
+ const body='<h1>章节测验</h1><div class="queList">判断题（共'+count+'题）</div><div class="testPaperShow">'+Array.from({length:count},(_,index)=>'<div class="ti"><fieldset><legend>测验演示'+(index+1)+'</legend><label><input name="q'+index+'" type="radio">正确</label><label><input name="q'+index+'" type="radio">错误</label></fieldset></div>').join('')+'</div><button id="save" '+(disabledSave?'disabled':'')+'>保存试卷</button><button id="commit">提交试卷</button>';
+ if(sameDocument)await page.evaluate(body=>document.body.insertAdjacentHTML('afterbegin',body),body);
+ else await page.frames()[1].setContent(body);
+ await page.addScriptTag({content:fs.readFileSync('quiz-submit.js','utf8')});
+ await page.evaluate(({sameDocument,disabledSave})=>{
+  const doc=sameDocument?document:document.querySelector('iframe').contentDocument;
+  window.calls=0;window.saved=0;window.committed=0;window.nextAttempts=0;window.confirmed=0;window.started=false;
+  const native=setTimeout;window.setTimeout=(fn,ms)=>native(fn,ms===350?1:ms);
+  chrome.runtime.sendMessage=async message=>{calls++;return {result:{answers:[1],explanation:'模拟答案'}};};
+  document.querySelector('#staleConfirm').onclick=()=>confirmed++;
+  if(disabledSave)doc.querySelectorAll('.testPaperShow input').forEach(input=>input.addEventListener('click',()=>doc.querySelector('#save').disabled=false));
+  doc.querySelector('#save').onclick=()=>{
+   if([...doc.querySelectorAll('.testPaperShow fieldset')].some(root=>!root.querySelector('input:checked')))throw Error('题目未完成');
+   saved++;const toast=doc.createElement('p');toast.textContent='保存试卷成功';doc.body.append(toast);
+  };
+  doc.querySelector('#commit').onclick=()=>{
+   doc.body.insertAdjacentHTML('beforeend','<div id="commitConfirmDialog"><h3>提交试卷</h3><button id="commitConfirm">确认提交</button></div>');
+   doc.querySelector('#commitConfirm').onclick=()=>{committed++;doc.querySelector('#commitConfirmDialog').innerHTML='<div class="layui-layer-content">测验提交成功</div>';};
+  };
+  document.querySelector('#next').onclick=()=>{
+   nextAttempts++;
+   if(sameDocument){doc.querySelector('.testPaperShow').remove();doc.querySelector('#save').remove();doc.querySelector('#commit').remove();}
+   else document.querySelector('iframe').remove();
+   const v=document.createElement('video');v.style='width:400px;height:200px';
+   Object.defineProperties(v,{paused:{get:()=>!window.started},ended:{get:()=>false}});
+   v.play=async()=>window.started=true;v.pause=()=>window.started=false;
+   document.body.prepend(v);
+  };
+ },{sameDocument,disabledSave});
+ return page;
+}
+for(const autoSubmit of [false,true])test('测验 iframe 与页底残留弹题隔离，保存后'+(autoSubmit?'交卷再续播':'直接续播'),async()=>{
+ const page=await assessmentWithHistory({autoSubmit});
+ try{
+  await click(page,'play');await page.waitForFunction(()=>window.started);
+  assert.equal(await page.evaluate(()=>calls),10);
+  assert.deepEqual(await page.evaluate(()=>[saved,committed,nextAttempts,confirmed]),[1,autoSubmit?1:0,1,0]);
+  assert.equal(await page.locator('#history input:checked').count(),0);
+  await page.evaluate(()=>window.ticks[0]());
+  assert.equal(await page.evaluate(()=>calls),10);
+ }finally{await page.close();}
+});
+test('同一页面的测验区域与残留弹题隔离，禁用保存入口仍用于定位测验',async()=>{
+ const page=await assessmentWithHistory({sameDocument:true,disabledSave:true});
+ try{
+  await click(page,'play');await page.waitForFunction(()=>window.started);
+  assert.deepEqual(await page.evaluate(()=>[calls,saved,nextAttempts,confirmed]),[1,1,1,0]);
+  assert.equal(await page.locator('#history input:checked').count(),0);
+ }finally{await page.close();}
+});
+test('混合页面答题期间暂停，不保存、不跳转，也不点击残留确定',async()=>{
+ const page=await assessmentWithHistory();
+ try{
+  await page.evaluate(()=>chrome.runtime.sendMessage=()=>new Promise(resolve=>window.releaseAnswer=resolve));
+  await click(page,'play');await page.waitForFunction(()=>!!window.releaseAnswer);
+  await click(page,'stop');
+  await page.evaluate(async()=>{releaseAnswer({result:{answers:[1],explanation:'迟到答案'}});await new Promise(resolve=>setTimeout(resolve,150));});
+  assert.deepEqual(await page.evaluate(()=>[saved,nextAttempts,confirmed]),[0,0,0]);
+  assert.equal(await page.locator('#history input:checked').count(),0);
+ }finally{await page.close();}
+});
+test('多个可见测验保存页面时停止混填',async()=>{
+ const page=await setup('<iframe></iframe><iframe></iframe>');
+ try{
+  for(const frame of page.frames().slice(1))await frame.setContent('<h1>章节测验</h1>'+fixture+'<button>保存试卷</button>');
+  await page.evaluate(()=>{window.calls=0;chrome.runtime.sendMessage=async()=>{calls++;return {result:{answers:[1],explanation:'模拟'}};};});
+  await click(page,'play');await page.waitForFunction(()=>window.panel.getElementById('state').textContent.includes('多个测验页面'));
+  assert.equal(await page.evaluate(()=>calls),0);
+ }finally{await page.close();}
+});
 test('recognizes question and fills selected radio without submitting',async()=>{
  const page=await setup();try{await click(page,'inspect');assert.match(await state(page),/1 道/);await click(page,'solve');await page.waitForFunction(()=>window.panel.getElementById('state').textContent.includes('填写完成'));
  assert.equal(await page.locator('input').nth(1).isChecked(),true);assert.equal(await page.evaluate(()=>window.submits),0);

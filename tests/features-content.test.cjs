@@ -15,10 +15,22 @@ async function setup(settings={},extra=''){
  const v=document.querySelector('video');window.running=false;window.videoTime=0;window.ready=4;Object.defineProperties(v,{paused:{get:()=>!window.running},readyState:{get:()=>window.ready},currentTime:{get:()=>window.videoTime},ended:{get:()=>false}});v.play=async()=>{window.running=true;window.plays=(window.plays||0)+1;};v.pause=()=>window.running=false;
  window.nextClicks=0;document.querySelector('.next').onclick=()=>window.nextClicks++;
  },settings);
- await page.addScriptTag({content:fs.readFileSync('content.js','utf8')});await page.waitForTimeout(30);return page;
+ await page.addScriptTag({content:fs.readFileSync('platforms.js','utf8')});await page.addScriptTag({content:fs.readFileSync('content.js','utf8')});await page.waitForTimeout(30);return page;
 }
 const click=(p,id)=>p.evaluate(id=>window.panel.getElementById(id).click(),id);
 const state=p=>p.evaluate(()=>window.panel.getElementById('state').textContent);
+test('学习记录使用页面课程标题，忽略网站通用标题与题目标题',async()=>{
+ const p=await setup({},'<header><h3>思想道德与法治</h3></header><fieldset><h2>第一题</h2></fieldset>');
+ try{
+  await p.evaluate(()=>document.title='优课在线-专注在线教育 专注高等教育');
+  await click(p,'play');await p.waitForFunction(()=>window.running);
+  await click(p,'stop');
+  const reports=await p.evaluate(()=>messages.filter(m=>m.type==='activityReport'&&m.position));
+  assert.ok(reports.length>0);
+  assert.equal(reports.at(-1).position.title,'思想道德与法治');
+  assert.equal(reports.at(-1).position.chapter,'第一节');
+ }finally{await p.close();}
+});
 test('课程悬浮摘要丢弃账号变化前的迟到成绩',async()=>{
  const p=await setup();
  try{

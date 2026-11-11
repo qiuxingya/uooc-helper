@@ -7,12 +7,14 @@
 <p align="center">课程连播 · DeepSeek 辅助答题 · 课程与成绩总览 · 本机登录保持</p>
 
 <p align="center">
-  <img alt="版本" src="https://img.shields.io/badge/version-2.1.6-167C68">
+  <img alt="版本" src="https://img.shields.io/badge/version-2.1.7-167C68">
   <img alt="架构" src="https://img.shields.io/badge/Manifest-V3-286D58">
   <img alt="浏览器" src="https://img.shields.io/badge/browser-Edge%20%7C%20Chrome-426F65">
 </p>
 
 面向优课 UOOC 与学习通的桌面浏览器扩展，提供视频连播、倍速、学习统计和课程成绩查看；优课支持 DeepSeek 辅助填写习题。原生 JavaScript 实现，无需安装 Node.js 或执行构建命令即可加载。
+
+**2.1.7 学习概览与课程成绩管理**。最近学习显示具体课程名，自动更新时保留展开状态和上次成功结果。成绩页新增课程摘要、数据状态筛选与排序，并可集中重试失败课程。测验题目与残留视频弹题分开识别，修复保存后无法继续视频的问题。
 
 **2.1.6 测验单击验证**。开启普通测验自动提交后，插件会在交卷确认框里点击一次可识别的验证按钮或阿里云复选框。网站显示验证通过或解锁原先禁用的“提交”控件后，才继续交卷。
 
@@ -32,7 +34,7 @@
 
 **2.0.0 学习通适配版**：接入章节多视频连播、倍速、定时停止、学习统计、独立成绩总览与登录保持开关。学习通可编辑章节测验尚缺真实样例，暂由人工作答和提交；课程与成绩已通过真实账号复测；真实连播与登录检测尚待反馈。原优课答题流程保留。
 
-从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.6**。本机助手不会自动覆盖包含新增访问范围的版本。
+从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.7**。本机助手不会自动覆盖包含新增访问范围的版本。
 
 > 本项目为非官方工具，与优课、学习通及 DeepSeek 无隶属关系。请遵守课程和平台的使用要求。模型可能答错，插件不会保证成绩、绕过闯关验证或伪造学习记录。
 
@@ -42,13 +44,23 @@
 
 ## 页面预览
 
-课程与成绩总览截图由 **v2.1.5** 渲染，其他未改动界面沿用 v2.1.3 预览，课程、成绩与登录状态均为模拟数据，不包含真实 API Key、Cookie 或个人信息。更新视图中的新版信息仅用于演示；窄屏展示不代表移动端浏览器支持安装扩展。
+学习概览、成绩页及错误恢复预览由 v2.1.7 渲染，其他布局沿用 v2.1.3。课程、成绩、登录状态与读取失败均为模拟数据。更新视图中的新版信息仅用于演示，窄屏展示用于检查布局。
+
+<p align="center"><img src="docs/screenshots/latest-2.1.7-popup-overview.png" width="360" alt="最近学习显示具体课程名，模拟数据"></p>
+
+读取失败时保留已有结果，并提供重新读取入口。
+
+<p align="center"><img src="docs/screenshots/latest-2.1.7-popup-recovery.png" width="320" alt="学习概览更新失败时保留课程记录，模拟数据"><img src="docs/screenshots/latest-2.1.7-grades-recovery.png" width="320" alt="成绩页顶部本机快照重试入口，模拟数据"></p>
+
+刷新时显示正在处理的课程与已处理数量，账号核对完成后才确认刷新完成。
+
+<p align="center"><img src="docs/screenshots/latest-2.1.7-grades-refresh.png" width="1000" alt="当前课程与刷新进度，模拟数据"></p>
 
 ### 插件概览与版本更新
 
 顶部带文字的“设置”入口、最近学习记录，以及无需跳转的更新视图。
 
-<p align="center"><img src="docs/screenshots/latest-2.1.3-popup.png" width="320" alt="v2.1.3 插件概览和设置入口"><img src="docs/screenshots/latest-2.1.3-update.png" width="320" alt="v2.1.3 弹窗内更新说明，模拟新版信息"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.7-popup-overview.png" width="320" alt="v2.1.7 插件概览与具体课程名"><img src="docs/screenshots/latest-2.1.3-update.png" width="320" alt="v2.1.3 弹窗内更新说明，模拟新版信息"></p>
 
 ### 学习通页面预览
 
@@ -58,7 +70,7 @@
 
 章节任务点完成度、综合成绩及网站提供的分项指标：
 
-<p align="center"><img src="docs/screenshots/latest-2.1.5-chaoxing-grades.png" width="1000" alt="最新版学习通课程与成绩总览，模拟数据"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.7-chaoxing-grades.png" width="1000" alt="最新版学习通课程与成绩总览，模拟数据"></p>
 
 ### 优课 UOOC 页面预览
 
@@ -68,7 +80,7 @@
 
 视频＋测验完成度、当前得分和分项成绩：
 
-<p align="center"><img src="docs/screenshots/latest-2.1.5-uooc-grades.png" width="1000" alt="最新版优课课程与成绩总览，模拟数据"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.7-uooc-grades.png" width="1000" alt="最新版优课课程与成绩总览，模拟数据"></p>
 
 ### 分类设置与统一登录保持
 
@@ -78,7 +90,7 @@
 
 <details><summary>查看窄屏与统一登录保持</summary>
 
-<p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="最新版窄屏密钥设置"><img src="docs/screenshots/latest-2.1.3-login-mobile.png" width="320" alt="最新版统一登录保持"><img src="docs/screenshots/latest-2.1.5-chaoxing-grades-mobile.png" width="320" alt="最新版学习通窄屏成绩"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="最新版窄屏密钥设置"><img src="docs/screenshots/latest-2.1.3-login-mobile.png" width="320" alt="最新版统一登录保持"><img src="docs/screenshots/latest-2.1.7-chaoxing-grades-mobile.png" width="320" alt="最新版学习通窄屏成绩"></p>
 
 </details>
 
@@ -88,7 +100,7 @@
 
 ### 可选：首次启用 Windows 自动更新助手
 
-1. 下载并解压 `uooc-helper-2.1.6.zip`，替换原插件目录，在扩展管理页重新加载。
+1. 下载并解压 `uooc-helper-2.1.7.zip`，替换原插件目录，在扩展管理页重新加载。
 2. 打开设置页“版本与更新”，展开“首次安装本机助手”，复制扩展 ID。
 3. 下载并解压 `uooc-updater-windows.zip`，运行 `UoocUpdater.exe`。填写扩展 ID，选择浏览器当前实际加载、直接包含 manifest.json 的独立插件文件夹，再选择 Edge 或 Chrome，点击“关联并安装”。
 4. 回到插件设置，点击“授权并连接本机助手”。确认显示关联目录后，即可使用“立即更新”。
@@ -111,7 +123,7 @@
 
 ### 发布者操作
 
-上传与标签、manifest.json 一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.6` 对应 `uooc-helper-2.1.6.zip`。每次发新版本都递增版本号。使用本机助手自动更新需提供 `uooc-updater-windows.zip`。静态更新客户端还需要正式版中的 `update.json` 和 `SHA256SUMS.txt`。
+上传与标签、manifest.json 一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.7` 对应 `uooc-helper-2.1.7.zip`。每次发新版本都递增版本号。使用本机助手自动更新需提供 `uooc-updater-windows.zip`。静态更新客户端还需要正式版中的 `update.json` 和 `SHA256SUMS.txt`。
 
 完整GitHub源码包额外包含 `native-updater/`、`tools/build-release.ps1` 和 `.github/workflows/release.yml`。在允许脚本的Windows PowerShell环境可运行构建脚本生成两个 ZIP、静态清单 `update.json` 和 `SHA256SUMS.txt`。推送v开头标签或手动触发工作流会构建并创建Release草稿／附加安装包；检查附件后再发布，草稿不会被自动更新客户端选中。工作流需要仓库启用Actions，Release上传需要contents写权限。不要把GitHub源码包当作自动安装附件。
 
@@ -119,7 +131,7 @@
 
 优课显示视频＋测验完成度和当前得分；学习通显示章节任务点完成度和综合成绩，展开后查看网站提供的分项指标。总评只在网站明确公布时显示。
 
-<p align="center"><img src="docs/screenshots/latest-2.1.5-uooc-grades.png" width="1000" alt="课程与成绩总览的演示页面，包含进度、得分及分项成绩"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.7-uooc-grades.png" width="1000" alt="课程与成绩总览的演示页面，包含进度、得分及分项成绩"></p>
 
 ### 密钥、播放与登录保持设置
 
@@ -140,7 +152,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 ### 工具栏学习概览
 
-<p align="center"><img src="docs/screenshots/latest-2.1.3-popup.png" width="360" alt="工具栏弹窗：今日与最近30天观看统计、最近学习位置"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.7-popup-overview.png" width="360" alt="工具栏弹窗：今日与最近30天观看统计、最近学习位置"></p>
 
 <details>
 <summary>查看窄屏设置页与成绩页</summary>
@@ -148,7 +160,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 窄屏截图用于展示响应式布局，不代表移动端浏览器已支持安装本扩展。
 
 <p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="390像素窄屏下的设置页"></p>
-<p align="center"><img src="docs/screenshots/latest-2.1.5-uooc-grades-mobile.png" width="320" alt="390像素窄屏下的课程成绩页"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.7-uooc-grades-mobile.png" width="320" alt="390像素窄屏下的课程成绩页"></p>
 
 </details>
 
@@ -186,7 +198,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 适用于支持 Manifest V3 的桌面版 Edge 和 Chrome，当前自动化浏览器验证使用 Edge。Firefox、Safari 和移动端浏览器尚未验证。
 
-1. 从 [v2.1.6 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.6) 下载 `uooc-helper-2.1.6.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
+1. 从 [v2.1.7 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.7) 下载 `uooc-helper-2.1.7.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
 2. 打开浏览器扩展管理页：Edge 为 `edge://extensions/`，Chrome 为 `chrome://extensions/`。
 3. 开启“开发者模式”，选择“加载解压缩的扩展”。
 4. 选择直接包含 [manifest.json](manifest.json) 的文件夹，**不要选择 ZIP 文件**。
@@ -257,6 +269,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 - 提交确认框出现唯一可识别的单击验证控件时自动点击一次，等待网站显示验证通过或解锁原先禁用的“提交”控件。遇到滑块、点选、验证码或结果不明确时暂停，交由人工处理。
 - 遇到未答完、未通过或交卷按钮不唯一时暂停。提交结果不明确时保留人工核对入口。
 - “分析并填写”只填写答案，不执行自动交卷。
+- 测验与页面下方的历史弹题同时出现时，题目核对与保存只处理当前测验。已关闭视频的残留“确定”按钮不会被当作测验保存入口。
 - 暂停或关闭自动交卷开关不能撤回已经发出的提交；已发出的模型请求也可能计费。
 
 ### 空小节与闯关限制
@@ -290,7 +303,9 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 点击工具栏扩展图标中的“课程与成绩”，或从课程面板进入独立总览页，选择“优课 UOOC”或“学习通”再刷新。
 
-- 支持课程名称搜索、状态筛选、刷新单课和刷新全部课程。
+- 支持名称搜索、课程状态与数据状态组合筛选。可按网站顺序、名称、完成度、当前得分和最新采集时间排序，缺失值排后，同值沿用网站顺序。
+- 顶部摘要统计当前平台全部已确认课程，筛选只改变列表。任务进度未知时不计入 100% 完成课程。
+- “重试失败课程”由后台选择当前账号的全部失败课程，重新核对课程列表后逐门读取。成功课程保留原快照和采集时间。
 - 优课进度采用“视频＋测验”口径；学习通沿用网站“章节任务点”完成度，可能包含视频、音频及测验，不重复累加测验数量。数据不足或分母为零时显示“暂无数据”。
 - 优课“当前得分”、学习通“综合成绩”均沿用网站名称，不当作最终总评。学习通分项的“我的成绩”已加权，不再次乘权重；零分、未公布、未读取和读取失败分别显示。
 - 展开课程可查看网站提供的签到、视频、作业、测验、讨论、考试及教师调分等分项。
@@ -429,7 +444,7 @@ uooc-helper/
 
 1. 先处理尚未保存的答案，再用新版文件替换扩展原安装目录。
 2. 在扩展管理页点击“重新加载”，随后刷新课程页面；仅下载 ZIP 或仅刷新网页不一定能更新已安装的副本。
-3. 展开悬浮面板，确认顶部版本为 **v2.1.6**。
+3. 展开悬浮面板，确认顶部版本为 **v2.1.7**。
 4. 如果仍显示旧版，检查扩展实际加载目录，不要同时开启多个助手副本。
 
 ## 验证范围与反馈
@@ -444,6 +459,7 @@ uooc-helper/
 
 | 版本 | 主要变化 |
 | --- | --- |
+| 2.1.7 | 课程名与概览恢复、课程成绩管理、失败课重试，以及残留弹题干扰保存的修复 |
 | 2.1.6 | 普通测验交卷时识别单击验证按钮，等待网站确认后续接 |
 | 2.1.5 | 优化两平台课程进度读取和账号切换，修复暂停后旧任务干扰新连播及更新失败后无法重试 |
 | [2.1.4](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.4) | 修复视频弹题 JSON 数组反馈解析，以及测验保存后切换卡住；支持原入口有限重试、暂停后继续，避免重复答题保存 |
@@ -461,7 +477,7 @@ uooc-helper/
 | 0.9.0 | 拖动悬浮球、倍速、定时、学习统计、诊断与备份 |
 | 0.8.1 | 免密码的 API Key 本机加密保存 |
 
-2.1.6 的测验交卷验证见 [本版验证记录](docs/validation-2.1.6.md)。此前版本见 [2.1.5](docs/validation-2.1.5.md)、[2.1.4](docs/validation-2.1.4.md)、[2.1.3](docs/validation-2.1.3.md)、[2.1.2](docs/validation-2.1.2.md)、[2.1.1](docs/validation-2.1.1.md)、[2.1.0](docs/validation-2.1.0.md)、[2.0.1](docs/validation-2.0.1.md) 和 [2.0.0](docs/validation-2.0.0.md) 验证记录。
+2.1.7 的课程名称、学习概览和成绩快照恢复见 [本版验证记录](docs/validation-2.1.7.md)。此前版本见 [2.1.6](docs/validation-2.1.6.md)、[2.1.5](docs/validation-2.1.5.md)、[2.1.4](docs/validation-2.1.4.md)、[2.1.3](docs/validation-2.1.3.md)、[2.1.2](docs/validation-2.1.2.md)、[2.1.1](docs/validation-2.1.1.md)、[2.1.0](docs/validation-2.1.0.md)、[2.0.1](docs/validation-2.0.1.md) 和 [2.0.0](docs/validation-2.0.0.md) 验证记录。
 
 ## 开发与验证
 
@@ -469,7 +485,7 @@ uooc-helper/
 
 使用 Node.js 24 与桌面 Edge，运行 `npm install --ignore-scripts` 安装测试依赖，再运行 `npm test`。测试使用独立模拟页面与接口，不使用真实账号、真实 Key 或付费请求；截图写入已忽略的 `.test-artifacts/`。GitHub Actions 的稳定性回归使用同一入口。
 
-打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.6`，生成插件 ZIP、独立 Windows 本机助手 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录。
+打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.7`，生成插件 ZIP、独立 Windows 本机助手 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录。
 
 ### 弹窗内更新
 
@@ -489,4 +505,4 @@ uooc-helper/
 
 ### 2.1.3 按钮预览（模拟数据）
 
-<p><img src="docs/screenshots/latest-2.1.3-popup.png" width="300" alt="醒目的设置入口"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="300" alt="删除密钥按钮窄屏预览"></p>
+<p><img src="docs/screenshots/latest-2.1.7-popup-overview.png" width="300" alt="醒目的设置入口"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="300" alt="删除密钥按钮窄屏预览"></p>

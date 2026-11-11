@@ -3,6 +3,66 @@ function environment(initialLocal={},initialSession={}){const local=structuredCl
 const account='a'.repeat(64),courses=[{courseId:'10',classId:'20',accountId:'99',cycleId:'10:20',name:'示例课'}],list={account,courses},center={listUrl:'https://fycourse.fanya.chaoxing.com/fyportal/courselist/course?space_token=test'};
 const progress={progress:{value:75,label:'章节任务点',source:'网站章节任务点',done:3,total:4}},score={platform:'chaoxing',current:{state:'value',value:60},components:[{name:'视频',weight:40,weighted:{state:'value',value:30},classAverage:{state:'value',value:20}}]};
 async function listed(e){await e.send('cxGradesStart');await e.answer(center);await e.answer(list);}
+function retrySetup(failed=true){
+ const now=Date.now(),snapshot={updatedAt:now-20000,current:{state:'value',value:70},progress:{value:50},rows:[]};
+ return environment({cxGradeCache:{version:1,accounts:{[account]:{courses:{
+  '10:20':{cycleId:'10:20',name:'失败课程',seenAt:now,snapshot,lastError:failed?'PAGE_TIMEOUT':null},
+  '10:21':{cycleId:'10:21',name:'成功课程',seenAt:now,snapshot,lastError:null}
+ }}}}},{cxGradeAccount:{hash:account}});
+}
+const retryList={account,courses:[courses[0],{...courses[0],cycleId:'10:21',classId:'21',name:'成功课程'}]};
+test('学习通集中重试只读失败课程的进度和成绩，保留成功课时间',async()=>{
+ const e=retrySetup(),old=structuredClone(e.local.cxGradeCache.accounts[account].courses['10:21'].snapshot);
+ await e.send('cxGradesStart',{retryFailed:true});await e.answer(center);await e.answer(retryList);
+ assert.deepEqual(Array.from(e.session.cxGradeJob.targets),['10:20']);
+ assert.equal((await e.send('cxGradesGet')).job.currentCourse.cycleId,'10:20');
+ await e.answer(progress);await e.answer(score);await e.answer(center);await e.answer(retryList);
+ assert.deepEqual(e.local.cxGradeCache.accounts[account].courses['10:21'].snapshot,old);
+ assert.equal(e.local.cxGradeCache.accounts[account].courses['10:20'].lastError,null);
+ assert.equal((await e.send('cxGradesGet')).job.currentCourse,null);
+});
+test('学习通无失败课不建标签页，重试参数与账号校验保持明确',async()=>{
+ const e=retrySetup(false);
+ assert.equal((await e.send('cxGradesStart',{retryFailed:true})).code,'NO_FAILED_COURSES');
+ assert.equal(e.tabs.size,0);
+ await assert.rejects(e.send('cxGradesStart',{retryFailed:true,cycleId:'10:20'}),/重试参数/);
+ await assert.rejects(e.send('cxGradesStart',{retryFailed:1}),/重试参数/);
+ delete e.session.cxGradeAccount;
+ await assert.rejects(e.send('cxGradesStart',{retryFailed:true}),error=>error.code==='LOGIN_REQUIRED');
+});
+test('学习通集中重试前切换账号立即停止并隐藏缓存',async()=>{
+ const e=retrySetup(),old=structuredClone(e.local.cxGradeCache);
+ await e.send('cxGradesStart',{retryFailed:true});await e.answer(center);
+ await e.answer({...retryList,account:'b'.repeat(64)});
+ const result=await e.send('cxGradesGet');
+ assert.equal(result.verified,false);assert.equal(result.job.errorCode,'ACCOUNT_CHANGED');
+ assert.deepEqual(e.local.cxGradeCache,old);
+});
+test('学习通已退选的失败课不再读取，也不保留在当前课程列表',async()=>{
+ const e=retrySetup(),listed={account,courses:[retryList.courses[1]]};
+ await e.send('cxGradesStart',{retryFailed:true});await e.answer(center);await e.answer(listed);
+ assert.equal(e.session.cxGradeJob.phase,'verify');
+ await e.answer(center);await e.answer(listed);
+ assert.equal((await e.send('cxGradesGet')).courses.length,1);
+ assert.equal(e.local.cxGradeCache.accounts[account].courses['10:20'],undefined);
+});
+test('学习通服务恢复继续原失败课子集，超时结果最终核对后才保存',async()=>{
+ const old=retrySetup(),extra={...courses[0],cycleId:'10:22',classId:'22',name:'另一失败课程'};
+ old.local.cxGradeCache.accounts[account].courses['10:22']={...old.local.cxGradeCache.accounts[account].courses['10:20'],cycleId:'10:22'};
+ const all={account,courses:[...retryList.courses,extra]};
+ await old.send('cxGradesStart',{retryFailed:true});await old.answer(center);await old.answer(all);await old.answer(progress);
+ old.session.cxGradeJob.pending.deadline=Date.now()-1;
+ const e=environment(old.local,old.session);e.tabs.set(7,{});
+ await e.api.restore();
+ assert.deepEqual(Array.from(e.session.cxGradeJob.targets),['10:20','10:22']);
+ assert.equal((await e.send('cxGradesGet')).job.currentCourse.cycleId,'10:22');
+ assert.equal((await e.send('cxGradesGet')).verified,false);
+ await e.answer(progress);await e.answer(score);await e.answer(center);await e.answer(all);
+ const result=await e.send('cxGradesGet');
+ assert.equal(result.job.failed,1);
+ assert.equal(result.courses.find(course=>course.cycleId==='10:20').lastError,'PAGE_TIMEOUT');
+ assert.equal(result.courses.find(course=>course.cycleId==='10:22').lastError,null);
+});
 test('read-only scan stores results only after matching account recheck and closes only its own tab',async()=>{const e=environment();await listed(e);assert.equal(e.session.cxGradeJob.phase,'progress');await e.answer(progress);await e.answer(score);assert.equal(e.local.cxGradeCache,undefined);await e.answer(center);assert.equal(e.session.cxGradeJob.phase,'verifyList');await e.answer(list);const view=await e.send('cxGradesGet');assert.equal(view.verified,true);assert.equal(view.courses.length,1);assert.equal(view.courses[0].snapshot.current.value,60);assert.equal(view.courses[0].snapshot.rows[0].weighted.value,30);assert.equal(view.courses[0].snapshot.progress.value,75);assert.deepEqual(e.closed,[7]);assert.equal(e.session.cxGradeJob.account,null);assert.ok(!JSON.stringify(e.local).includes('space_token'));});
 test('account changes never publish staged grades under either account',async()=>{const e=environment();await listed(e);await e.answer(progress);await e.answer(score);await e.answer(center);await e.answer({...list,account:'b'.repeat(64)});assert.equal(e.session.cxGradeJob.status,'failed');assert.equal(e.session.cxGradeJob.error,'ACCOUNT_CHANGED');assert.equal((await e.send('cxGradesGet')).verified,false);assert.equal(e.local.cxGradeCache,undefined);});
 test('result requires own scan tab, top frame, document and task token',async()=>{const e=environment();await listed(e);for(const patch of [{tab:{id:8}},{frameId:2},{documentId:'other'}]){await assert.rejects(e.send('cxGradeResult',{jobId:e.session.cxGradeJob.id,token:e.session.cxGradeJob.pending.token,data:progress},{...e.sender(),...patch},'cxpage'),/未授权/);}assert.equal(e.session.cxGradeJob.phase,'progress');});

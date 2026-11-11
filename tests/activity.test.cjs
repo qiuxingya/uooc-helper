@@ -3,6 +3,39 @@ const url='https://www.uooc.net.cn/home/learn/index#/101/202/303/section';
 const course=(id=1,address=url)=>({id:'test',url:address,tab:{id},frameId:0,documentId:'doc-'+id});
 function setup(fetch){const env=environment({}, {},fetch,{},true);let clock=Date.now();env.context.Date=class extends Date{static now(){return clock;}};return Object.assign(env,{advance:ms=>clock+=ms,now:()=>clock});}
 const send=(env,type,data={},sender=course())=>env.send(type,data,sender);
+test('最近学习优先保留实际课程名，通用站点标题不能覆盖它',async()=>{
+ const env=setup();
+ const report=title=>send(env,'activityReport',{segments:[],position:{title,chapter:'第一节',seconds:30}});
+ await report('思想道德与法治 - 优课在线');
+ await report('优课在线-专注在线教育 专注高等教育');
+ assert.equal((await env.send('overview')).result.recent[0].title,'思想道德与法治');
+ await report('大学英语');
+ assert.equal((await env.send('overview')).result.recent[0].title,'大学英语');
+});
+test('损坏的单条本机学习记录不阻断概览读取',async()=>{
+ const env=setup();
+ await send(env,'activityReport',{segments:[],position:{title:'课程',chapter:'第一节',seconds:30}});
+ env.local.activityData.recent.unshift(null,{url:'bad',title:3,time:env.now()});
+ const response=await env.send('overview');
+ assert.equal(response.error,undefined);
+ assert.equal(response.result.recent.length,1);
+ assert.equal(response.result.recent[0].title,'课程');
+});
+test('旧通用标题仅从当前已确认账号的有效课程缓存恢复',async()=>{
+ const env=setup(),account='a'.repeat(64);
+ const generic='优课在线-专注在线教育 专注高等教育';
+ await send(env,'activityReport',{segments:[],position:{title:generic,chapter:'第一节',seconds:30}});
+ const record={name:'思想道德与法治',seenAt:env.now()};
+ env.local.gradeCache={accounts:{[account]:{courses:{101:record}}}};
+ assert.equal((await env.send('overview')).result.recent[0].title,'课程名称待更新');
+ env.session.gradeAccount={hash:account};
+ assert.equal((await env.send('overview')).result.recent[0].title,'思想道德与法治');
+ env.session.gradeAccount={hash:'b'.repeat(64)};
+ assert.equal((await env.send('overview')).result.recent[0].title,'课程名称待更新');
+ env.session.gradeAccount={hash:account};record.seenAt=env.now()-31*86400000;
+ assert.equal((await env.send('overview')).result.recent[0].title,'课程名称待更新');
+ assert.equal(env.calls.length,0);
+});
 test('overlapping tabs merge watch intervals and same-day completion is unique',async()=>{
  const env=setup();let now=env.now();await send(env,'activityReport',{segments:[[now-10000,now]],ended:true,resource:'#/101/202/303/section',position:{title:'课程',chapter:'第一节',seconds:120}});
  await send(env,'activityReport',{segments:[[now-5000,now]],ended:true,resource:'#/101/202/303/section'},course(2));let result=(await env.send('overview')).result;assert.equal(result.today.milliseconds,10000);assert.equal(result.today.videos,1);assert.equal(result.recent[0].seconds,120);

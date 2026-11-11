@@ -2,6 +2,105 @@ const {test,before,after}=require('node:test'),assert=require('node:assert/stric
 before(async()=>browser=await chromium.launch({channel:'msedge',headless:true}));after(async()=>browser?.close());
 async function setup(data){const p=await browser.newPage({viewport:{width:1180,height:900}});await p.setContent(fs.readFileSync('grades.html','utf8').replace(/<script.*?<\/script>/g,''));await p.addStyleTag({content:fs.readFileSync('grades.css','utf8')});await p.evaluate(data=>{window.info=data;window.messages=[];window.chrome={runtime:{openOptionsPage:()=>{},sendMessage:async m=>{window.messages.push(m);return {result:['gradesGet','cxGradesGet'].includes(m.type)?window.info:{}};}},storage:{onChanged:{addListener:fn=>window.changed=fn}}};},data);await p.addScriptTag({content:fs.readFileSync('grades.js','utf8')});await p.waitForFunction(()=>document.querySelector('#courseCount').textContent.includes('/'));return p;}
 function data(){return {verified:true,job:{status:'done',done:2,total:2},courses:[{...course('301'),name:'演示课程甲',snapshot:{...score(13.1),updatedAt:Date.now()},seenAt:Date.now()},{...course('302','finish'),name:'演示课程乙',snapshot:{...score(0),final:{state:'unpublished',value:null},updatedAt:Date.now()},lastError:'PAGE_TIMEOUT',lastAttempt:Date.now(),seenAt:Date.now()},{...course('303','nostart'),name:'未开始课程',snapshot:null,seenAt:Date.now()}]};}
+test('课程摘要按当前平台计数，数据状态与搜索可组合',async()=>{
+ const demo=data();demo.courses[0].snapshot.progress.value=100;demo.courses[1].snapshot.progress.value=null;
+ const p=await setup(demo);
+ try{
+  assert.equal(await p.locator('#totalCourses').textContent(),'3');
+  assert.equal(await p.locator('#completedCourses').textContent(),'1');
+  assert.equal(await p.locator('#attentionCourses').textContent(),'2');
+  await p.locator('#dataFilter').selectOption('failed');
+  assert.equal(await p.locator('.course-card').count(),1);
+  assert.equal(await p.locator('#totalCourses').textContent(),'3');
+  await p.locator('#search').fill('课程甲');
+  assert.equal(await p.locator('.course-card').count(),0);
+  await p.locator('#search').fill('');await p.locator('#dataFilter').selectOption('unread');
+  assert.equal(await p.locator('.course-card h2').textContent(),'未开始课程');
+ }finally{await p.close();}
+});
+test('全部排序保持同值顺序，0 分有效，缺失值排最后',async()=>{
+ const demo={verified:true,job:null,courses:[
+  {...course('301'),name:'课程C',order:1,snapshot:{...score(0),progress:{value:0},updatedAt:30}},
+  {...course('302'),name:'课程A',order:3,snapshot:{...score(50),progress:{value:100},updatedAt:10}},
+  {...course('303'),name:'课程B',order:2,snapshot:{...score(50),progress:{value:100},updatedAt:20}},
+  {...course('304'),name:'课程D',order:4,snapshot:null},
+  {...course('305'),name:'课程E',order:0,snapshot:{...score(),current:{state:'unpublished'},progress:{value:null},updatedAt:40}}
+ ]};
+ const p=await setup(demo);
+ try{
+  const expected={
+   website:['305','301','303','302','304'],name:['302','303','301','304','305'],
+   progressAsc:['301','303','302','305','304'],progressDesc:['303','302','301','305','304'],
+   scoreDesc:['303','302','301','305','304'],updatedDesc:['305','301','303','302','304']
+  };
+  for(const [sort,ids]of Object.entries(expected)){
+   await p.locator('#sort').selectOption(sort);
+   assert.deepEqual(await p.locator('.course-card').evaluateAll(cards=>cards.map(card=>card.dataset.cycle)),ids);
+  }
+ }finally{await p.close();}
+});
+test('筛选隐藏课程、轮询更新及平台往返均保留展开和查找状态',async()=>{
+ const demo=data(),p=await setup(demo);
+ try{
+  await p.locator('summary').first().click();
+  await p.locator('#dataFilter').selectOption('failed');
+  await p.locator('#dataFilter').selectOption('all');
+  assert.equal(await p.locator('.course-card').first().locator('details').getAttribute('open'),'');
+  await p.locator('#search').fill('课程甲');await p.locator('#sort').selectOption('name');
+  await p.evaluate(()=>changed({gradeCache:{}},'local'));
+  await p.waitForFunction(()=>document.getElementById('readStatus').hidden);
+  await p.evaluate(()=>window.info={verified:true,courses:[{cycleId:'10:20',name:'学习通示例',status:'learn'}],job:null});
+  await p.locator('#platform').selectOption('chaoxing');
+  await p.locator('#search').fill('学习通');
+  await p.evaluate(demo=>window.info=demo,demo);
+  await p.locator('#platform').selectOption('uooc');
+  assert.equal(await p.locator('#search').inputValue(),'课程甲');
+  assert.equal(await p.locator('#sort').inputValue(),'name');
+  assert.equal(await p.locator('details[open]').count(),1);
+  await p.locator('#platform').selectOption('chaoxing');
+  assert.equal(await p.locator('#search').inputValue(),'学习通');
+ }finally{await p.close();}
+});
+test('课程处理进度有真实计数，最终核对阶段仍显示未完成',async()=>{
+ const demo=data();demo.verified=false;demo.job={status:'running',phase:'list',found:2};
+ const p=await setup(demo);
+ try{
+  assert.equal(await p.locator('#scanProgress').getAttribute('value'),null);
+  await p.evaluate(()=>{info.job={status:'running',phase:'score',done:1,total:2,currentCourse:{name:'当前课程'}};changed({gradeJob:{}},'session');});
+  await p.waitForFunction(()=>document.getElementById('scanProgress').getAttribute('value')==='1');
+  assert.equal(await p.locator('#scanProgress').getAttribute('max'),'2');
+  assert.match(await p.locator('#scanStatus').textContent(),/当前课程.*已处理 1 \/ 2/);
+  await p.evaluate(()=>{info.job={status:'running',phase:'account',done:2,total:2};changed({gradeJob:{}},'session');});
+  await p.getByText('正在核对账号，尚未完成刷新。',{exact:true}).waitFor();
+  assert.equal(await p.locator('#scanProgress').getAttribute('value'),null);
+  await p.evaluate(()=>{info.job={status:'done',done:2,total:2};info.verified=true;changed({gradeJob:{}},'session');});
+  await p.waitForFunction(()=>document.getElementById('scanProgress').hidden);
+  assert.match(await p.locator('#scanStatus').textContent(),/刷新完成/);
+ }finally{await p.close();}
+});
+test('集中重试不受课程筛选影响，仅传后台选择标识',async()=>{
+ const p=await setup(data());
+ try{
+  await p.locator('#search').fill('课程甲');
+  await p.locator('#retryFailed').click();
+  const request=await p.evaluate(()=>messages.find(message=>message.type==='gradesStart'));
+  assert.equal(request.retryFailed,true);
+  assert.equal(Object.hasOwn(request,'cycleId'),false);
+ }finally{await p.close();}
+});
+test('没有失败课的后台回复显示说明，固定错误码决定失败文字',async()=>{
+ const demo=data();demo.job={status:'failed',phase:'score',errorCode:'PAGE_TIMEOUT',error:'unexpected text'};
+ const p=await setup(demo);
+ try{
+  assert.match(await p.locator('#scanStatus').textContent(),/页面读取超时/);
+  await p.evaluate(()=>{
+   const original=chrome.runtime.sendMessage;
+   chrome.runtime.sendMessage=async message=>message.type==='gradesStart'?{result:{started:false,code:'NO_FAILED_COURSES'}}:original(message);
+  });
+  await p.locator('#retryFailed').click();
+  await p.getByText('没有需要重试的课程。',{exact:true}).waitFor();
+ }finally{await p.close();}
+});
 test('overview separates current/final scores, zeros, unread and stale failed snapshots',async()=>{const p=await setup(data());try{await p.locator('.course-card').first().waitFor();assert.equal(await p.locator('.course-card').count(),3);assert.equal(await p.locator('.course-card').first().locator('.metric strong').nth(1).innerText(),'13.1');assert.equal(await p.locator('.course-card').first().locator('.metric strong').nth(2).innerText(),'网站未显示');assert.equal(await p.locator('.course-card').nth(1).locator('.metric strong').nth(1).innerText(),'0');assert.equal(await p.locator('.course-card').nth(1).locator('.metric strong').nth(2).innerText(),'未公布');assert.match(await p.locator('.failure').innerText(),/旧快照/);assert.equal(await p.locator('.course-card').nth(2).locator('.metric strong').nth(1).innerText(),'未读取');
  await p.locator('details').first().evaluate(e=>e.open=true);await p.screenshot({path:'.test-artifacts/课程成绩总览预览.png',fullPage:true});await p.setViewportSize({width:390,height:844});await p.screenshot({path:'.test-artifacts/课程成绩手机预览.png',fullPage:true});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  }finally{await p.close();}});
@@ -10,7 +109,7 @@ test('unverified state hides even supplied cached grades and running job exposes
 
 test('Chaoxing UI preserves weighted fields, zero and task progress with a validated grade link',async()=>{
  const d={verified:true,job:{status:'done',done:1,total:1},courses:[{cycleId:'10:20',name:'演示学习通课程',status:'learn',scoreUrl:'https://stat2-ans.chaoxing.com/stat2/overall-score/stu-score?courseid=10&clazzid=20&cpi=99&ut=s',snapshot:{current:{state:'value',value:0},final:{state:'unpublished',value:null},progress:{value:75,source:'网站章节任务点'},updatedAt:Date.now(),rows:[{label:'章节任务点',weight:{state:'value',value:40},weighted:{state:'value',value:30},classAverage:{state:'value',value:20}}]}}]};
- const p=await setup(d);try{await p.locator('#platform').selectOption('chaoxing');await p.locator('.course-card').waitFor();assert.match(await p.locator('.course-card').innerText(),/综合成绩/);assert.equal(await p.locator('.metric strong').nth(1).innerText(),'0');assert.equal(await p.locator('progress').getAttribute('aria-label'),'章节任务点完成度');assert.equal(await p.locator('.course-actions a').getAttribute('href'),d.courses[0].scoreUrl);await p.locator('summary').click();assert.match(await p.locator('tbody').innerText(),/40%/);assert.match(await p.locator('thead').innerText(),/班级平均（加权）/);assert.equal(await p.locator('tbody tr td').nth(6).innerText(),'30');}finally{await p.close();}
+ const p=await setup(d);try{await p.locator('#platform').selectOption('chaoxing');await p.locator('.course-card').waitFor();assert.match(await p.locator('.course-card').innerText(),/综合成绩/);assert.equal(await p.locator('.metric strong').nth(1).innerText(),'0');assert.equal(await p.locator('.metric progress').getAttribute('aria-label'),'章节任务点完成度');assert.equal(await p.locator('.course-actions a').getAttribute('href'),d.courses[0].scoreUrl);await p.locator('summary').click();assert.match(await p.locator('tbody').innerText(),/40%/);assert.match(await p.locator('thead').innerText(),/班级平均（加权）/);assert.equal(await p.locator('tbody tr td').nth(6).innerText(),'30');}finally{await p.close();}
 });
 
 test('Chaoxing cached grade links reject external sites, extra parameters and another course',async()=>{

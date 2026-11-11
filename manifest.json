@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "优课学习助手",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "description": "优课与学习通课程连播、倍速、习题辅助填写、学习统计、课程成绩和本机登录保持。",
   "permissions": [
     "storage",

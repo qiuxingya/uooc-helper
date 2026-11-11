@@ -21,12 +21,33 @@
   const score=course.snapshot||{current:unread,final:unread,rows:[],updatedAt:null};
   return {...course,snapshot:{...score,progress:course.progressSnapshot},progressOnly:true};
  }
- async function view(){const [job,data,account]=await Promise.all([state(),cache(),chrome.storage.session.get(ACCOUNT)]),a=account[ACCOUNT],verified=!!a&&hash(a.hash);return {verified,courses:verified?Object.values(data.accounts[a.hash]?.courses||{}).map(presentCourse):[],job:job?{status:job.status,phase:job.phase,found:job.courses.length,total:job.targets.length,done:job.index,failed:job.failed,error:job.error||null}:null};}
- async function finish(job,status,error=null){job.status=status;job.error=error;const tabId=job.tabId;job.tabId=null;job.pending=null;job.courses=job.courses.map(c=>({cycleId:c.cycleId}));job.results={};job.account=null;await save(job);await chrome.alarms.clear(ALARM);if(Number.isInteger(tabId))try{await chrome.tabs.remove(tabId);}catch{}}
+ async function view(){
+  const [job,data,account]=await Promise.all([state(),cache(),chrome.storage.session.get(ACCOUNT)]),a=account[ACCOUNT],verified=!!a&&hash(a.hash);
+  const current=job?.status==='running'&&['progress','score'].includes(job.phase)?job.courses.find(course=>course.cycleId===job.targets[job.index]):null;
+  return {verified,courses:verified?Object.values(data.accounts[a.hash]?.courses||{}).map(presentCourse):[],job:job?{status:job.status,phase:job.phase,found:job.courses.length,total:job.targets.length,done:job.index,failed:job.failed,currentCourse:current?{cycleId:current.cycleId,name:current.name}:null,errorCode:job.error||null,error:job.error||null}:null};
+ }
+ async function finish(job,status,error=null){job.status=status;job.error=error;const tabId=job.tabId;job.tabId=null;job.pending=null;job.courses=job.courses.map(c=>({cycleId:c.cycleId}));job.results={};job.account=null;job.retryIds=null;await save(job);await chrome.alarms.clear(ALARM);if(Number.isInteger(tabId))try{await chrome.tabs.remove(tabId);}catch{}}
  async function navigate(job,kind,address){job.phase=kind;job.pending={token:nonce(),url:address,kind,documentId:null,deadline:Date.now()+20000};await save(job);await chrome.alarms.create(ALARM,{when:job.pending.deadline});await chrome.tabs.update(job.tabId,{url:address});}
  async function next(job){if(job.index>=job.targets.length){await navigate(job,'verify',CENTER);return;}const course=job.courses.find(c=>c.cycleId===job.targets[job.index]);await navigate(job,'progress',url(course,'progress'));}
  async function pageFailure(job,code){if(['progress','score'].includes(job.phase)&&!['LOGIN_REQUIRED','ACCOUNT_CHANGED'].includes(code)){const partial=job.phase==='score'?job.progress?.progress:null;job.results[job.targets[job.index]]={error:code,at:Date.now(),progressSnapshot:partial};delete job.progress;job.failed++;job.index++;await next(job);}else{if(['LOGIN_REQUIRED','ACCOUNT_CHANGED'].includes(code))await chrome.storage.session.remove(ACCOUNT);await finish(job,'failed',code);}}
- async function start(cycleId){const prior=await state();if(prior?.status==='running')throw Error('学习通成绩正在刷新');if(cycleId!==undefined&&!key(cycleId))throw Error('课程标识无效');await chrome.storage.session.remove(ACCOUNT);const tab=await chrome.tabs.create({url:'about:blank',active:false}),job={id:nonce(),status:'running',phase:'center',tabId:tab.id,courses:[],targets:[],index:0,failed:0,results:{},account:null,one:cycleId||null};await navigate(job,'center',CENTER);return view();}
+ async function start(cycleId,retryFailed=false){
+  const prior=await state();if(prior?.status==='running')throw Error('学习通成绩正在刷新');
+  if(cycleId!==undefined&&!key(cycleId))throw Error('课程标识无效');
+  if(typeof retryFailed!=='boolean'||retryFailed&&cycleId!==undefined)throw Error('重试参数无效');
+  let retryIds=null,expectedAccount=null;
+  if(retryFailed){
+   const saved=(await chrome.storage.session.get(ACCOUNT))[ACCOUNT];
+   if(!hash(saved?.hash))throw Object.assign(Error('请先刷新课程确认当前账号'),{code:'LOGIN_REQUIRED'});
+   expectedAccount=saved.hash;
+   const data=await cache();
+   retryIds=Object.entries(data.accounts[expectedAccount]?.courses||{}).filter(([,course])=>course.lastError).map(([cycle])=>cycle);
+   if(!retryIds.length)return {started:false,code:'NO_FAILED_COURSES'};
+  }
+  await chrome.storage.session.remove(ACCOUNT);
+  const tab=await chrome.tabs.create({url:'about:blank',active:false});
+  const job={id:nonce(),status:'running',phase:'center',tabId:tab.id,courses:[],targets:[],index:0,failed:0,results:{},account:expectedAccount,one:cycleId||null,retryIds};
+  await navigate(job,'center',CENTER);return view();
+ }
  async function hello(sender){const job=await state();if(!job||job.status!=='running'||job.tabId!==sender.tab.id)return {scan:false};if(!sender.frameId&&/^https:\/\/(?:passport2|passport2-api|v8)\.chaoxing\.com\//.test(sender.url||'')){await chrome.storage.session.remove(ACCOUNT);await finish(job,'failed','LOGIN_REQUIRED');return {scan:true};}if(sender.frameId||!sender.documentId||!matchesPage(job.pending,sender.url))return {scan:true};job.pending.documentId=sender.documentId;await save(job);return {scan:true,task:{jobId:job.id,token:job.pending.token,kind:job.pending.kind==='verify'?'center':job.pending.kind}};}
  function validateCourses(data){if(!hash(data.account)||!Array.isArray(data.courses)||data.courses.length>500)throw Error('READ_FAILED');const found=new Map();for(const c of data.courses){if(!id(c.courseId)||!id(c.classId)||!id(c.accountId)||c.cycleId!==c.courseId+':'+c.classId||typeof c.name!=='string'||!c.name.trim())throw Error('READ_FAILED');found.set(c.cycleId,{cycleId:c.cycleId,courseId:c.courseId,classId:c.classId,accountId:c.accountId,name:c.name.slice(0,160),term:typeof c.term==='string'?c.term.slice(0,80):'',status:c.status==='ended'?'finish':'learn'});}return [...found.values()];}
  function validScore(d){return d&&d.platform==='chaoxing'&&d.current&&['value','unpublished','unread'].includes(d.current.state)&&(d.current.state!=='value'||Number.isFinite(d.current.value)&&Math.abs(d.current.value)<=1000000)&&Array.isArray(d.components)&&d.components.length<=100;}
@@ -40,9 +61,11 @@
    else if(job.phase==='list'||job.phase==='verifyList'){
     const courses=validateCourses(d);if(job.phase==='verifyList'){
      if(d.account!==job.account)throw Error('ACCOUNT_CHANGED');const data=await cache(),bucket=data.accounts[job.account]||={courses:{}};
-     for(const c of job.courses){const prior=bucket.courses[c.cycleId],r=job.results[c.cycleId],clean={cycleId:c.cycleId,name:c.name,term:c.term,status:c.status,platform:'chaoxing',scoreUrl:url(c,'score'),seenAt:Date.now()};if(r?.snapshot)bucket.courses[c.cycleId]={...clean,snapshot:r.snapshot,lastAttempt:r.at,lastError:null};else bucket.courses[c.cycleId]={...clean,snapshot:prior?.snapshot||null,progressSnapshot:r?.progressSnapshot||prior?.progressSnapshot||null,lastAttempt:r?.at||prior?.lastAttempt||null,lastError:r?.error||prior?.lastError||null};}
+     const retained={};
+     for(const [order,c] of job.courses.entries()){const prior=bucket.courses[c.cycleId],r=job.results[c.cycleId],clean={cycleId:c.cycleId,name:c.name,term:c.term,status:c.status,order,platform:'chaoxing',scoreUrl:url(c,'score'),seenAt:Date.now()};if(r?.snapshot)retained[c.cycleId]={...clean,snapshot:r.snapshot,lastAttempt:r.at,lastError:null};else retained[c.cycleId]={...clean,snapshot:prior?.snapshot||null,progressSnapshot:r?.progressSnapshot||prior?.progressSnapshot||null,lastAttempt:r?.at||prior?.lastAttempt||null,lastError:r?.error||prior?.lastError||null};}
+     bucket.courses=retained;
      await chrome.storage.local.set({[CACHE]:data});await chrome.storage.session.set({[ACCOUNT]:{hash:job.account,checkedAt:Date.now()}});await finish(job,'done');
-    }else{job.account=d.account;job.courses=courses;job.targets=courses.filter(c=>!job.one||c.cycleId===job.one).map(c=>c.cycleId);if(job.one&&!job.targets.length)throw Error('NOT_ENROLLED');await next(job);}
+    }else{if(job.account&&job.account!==d.account)throw Error('ACCOUNT_CHANGED');job.account=d.account;job.courses=courses;job.targets=courses.filter(c=>(!job.one||c.cycleId===job.one)&&(!job.retryIds||job.retryIds.includes(c.cycleId))).map(c=>c.cycleId);if(job.one&&!job.targets.length)throw Error('NOT_ENROLLED');await next(job);}
    }else if(job.phase==='progress'){
     if(!d||!d.progress||!(d.progress.value===null||Number.isFinite(d.progress.value)&&d.progress.value>=0&&d.progress.value<=100))throw Error('READ_FAILED');const counts=value=>value&&Number.isSafeInteger(value.done)&&Number.isSafeInteger(value.total)&&value.done>=0&&value.done<=value.total?{done:value.done,total:value.total}:null;
     const tasks=counts(d.tasks)||counts(d.progress),quiz=counts(d.quiz);
@@ -64,7 +87,7 @@
   }
   if(m.type==='cxGradeSummary'){if(role!=='course')throw Error('未授权操作');const data=await view();let cycle;try{cycle=UoocPlatforms.identity(s.url).replace('chaoxing:','');}catch{}return {verified:data.verified,course:data.courses.find(c=>c.cycleId===cycle)||null};}
   if(!['grades','options','popup'].includes(role))throw Error('此操作仅供扩展页面使用');
-  if(m.type==='cxGradesGet')return view();if(m.type==='cxGradesStart')return start(m.cycleId);
+  if(m.type==='cxGradesGet')return view();if(m.type==='cxGradesStart')return start(m.cycleId,m.retryFailed);
   if(m.type==='cxGradesCancel'){const job=await state();if(job?.status==='running')await finish(job,'cancelled','CANCELLED');return {};}
   if(m.type==='cxGradesClear'){if((await state())?.status==='running')throw Error('请先取消刷新');const a=(await chrome.storage.session.get(ACCOUNT))[ACCOUNT],data=await cache();if(a)delete data.accounts[a.hash];await chrome.storage.local.set({[CACHE]:data});return {};}
  })};

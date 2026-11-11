@@ -14,5 +14,12 @@
   const q=new URLSearchParams(),studyPage=/\/studentstudy$/.test(u.pathname);for(const k of ['courseid','clazzid','chapterid','knowledgeid','cpi'])if(fields[k])q.set(studyPage&&k==='courseid'?'courseId':studyPage&&k==='chapterid'?'chapterId':k,fields[k]);return u.origin+u.pathname+'?'+q;
  }
  function identity(raw){const u=new URL(route(raw));if(platform(raw)==='chaoxing')return 'chaoxing:'+(u.searchParams.get('courseid')||u.searchParams.get('courseId'))+':'+u.searchParams.get('clazzid');const parts=u.hash.slice(2).split('/');return /^\d+$/.test(parts[0])&&/^\d+$/.test(parts[1])?u.origin+u.pathname+'#/'+parts.slice(0,2).join('/'):u.origin+u.pathname;}
- globalThis.UoocPlatforms={platform,study,route,identity,matches:['*://*.uooc.net.cn/*','*://*.chaoxing.com/*']};
+ function courseTitle(value){
+  if(typeof value!=='string')return '';
+  const title=value.normalize('NFKC').replace(/[\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim();
+  const generic=title.replace(/[\s·—\-_|]/g,'');
+  if(/^(?:优课在线(?:专注在线教育)?(?:专注高等教育)?|优课课程|优课|UOOC|学习通|超星学习通|超星泛雅|泛雅网络教学平台|课程名称待更新)$/i.test(generic))return '';
+  return title.replace(/\s*[-—|_·]\s*(?:优课在线.*|超星学习通|学习通|超星泛雅|泛雅网络教学平台)$/i,'').trim().slice(0,120);
+ }
+ globalThis.UoocPlatforms={platform,study,route,identity,courseTitle,matches:['*://*.uooc.net.cn/*','*://*.chaoxing.com/*']};
 })();

@@ -20,7 +20,8 @@
    }
    if(!Object.keys(entry).length)delete data.days[day];
   }
-  data.recent=data.recent.filter(r=>r.time>now-KEEP).slice(0,10);
+  data.recent=(Array.isArray(data.recent)?data.recent:[]).filter(r=>r&&typeof r.url==='string'&&typeof r.title==='string'&&typeof r.chapter==='string'
+   &&Number.isFinite(r.time)&&r.time>now-KEEP&&r.time<=8640000000000000&&Number.isFinite(r.seconds)&&r.seconds>=0&&r.seconds<=86400).slice(0,10);
   data.logs=data.logs.filter(r=>r.time>now-KEEP).slice(-1000);return data;
  }
  async function load(){const {activityData}=await chrome.storage.local.get('activityData');return prune(activityData||{days:{},recent:[],logs:[]},Date.now());}
@@ -40,7 +41,9 @@
   const resource=typeof message.resource==='string'&&/^[a-zA-Z0-9/_#:-]{1,220}$/.test(message.resource)?message.resource:null;
   if(message.ended===true&&resource){const bucket=data.days[today(now)]||=(Object.create(null)),item=bucket[course]||={intervals:[],completed:[]};if(!item.completed.some(x=>x.id===resource))item.completed.push({id:resource,time:now});}
   if(message.position&&Number.isFinite(message.position.seconds)&&message.position.seconds>=0){
-   data.recent=data.recent.filter(r=>r.course!==course);data.recent.unshift({course,url,title:cleanText(message.position.title)||'优课课程',chapter:cleanText(message.position.chapter)||'当前资源',seconds:Math.min(message.position.seconds,86400),time:now});data.recent=data.recent.slice(0,10);
+   const prior=data.recent.find(r=>r.course===course);
+   const title=UoocPlatforms.courseTitle(message.position.title)||UoocPlatforms.courseTitle(prior?.title)||'课程名称待更新';
+   data.recent=data.recent.filter(r=>r.course!==course);data.recent.unshift({course,url,title,chapter:cleanText(message.position.chapter)||'当前资源',seconds:Math.min(message.position.seconds,86400),time:now});data.recent=data.recent.slice(0,10);
   }
   if(message.ended)logEntry(data,'complete','video','VIDEO_END');
   await chrome.storage.local.set({activityData:prune(data,now)});return {ok:true};
@@ -49,6 +52,26 @@
   const result={today:{milliseconds:0,videos:0},recent30:{milliseconds:0,videos:0},recent:data.recent};
   for(const [day,courses] of Object.entries(data.days))for(const item of Object.values(courses)){const ms=item.intervals.reduce((sum,[a,b])=>sum+b-a,0),n=item.completed.length;result.recent30.milliseconds+=ms;result.recent30.videos+=n;if(day===today(Date.now())){result.today.milliseconds+=ms;result.today.videos+=n;}}
   return result;
+ }
+ async function recentTitles(data){
+  if(!data.recent.some(item=>!UoocPlatforms.courseTitle(item.title)))return;
+  const [local,session]=await Promise.all([
+   chrome.storage.local.get(['gradeCache','cxGradeCache']),
+   chrome.storage.session.get(['gradeAccount','cxGradeAccount'])
+  ]);
+  data.recent=data.recent.map(item=>{
+   const title=UoocPlatforms.courseTitle(item.title);
+   if(title)return {...item,title};
+   let cached;
+   try{
+    const address=new URL(item.url),cx=UoocPlatforms.platform(item.url)==='chaoxing';
+    const id=cx?UoocPlatforms.identity(item.url).slice('chaoxing:'.length):address.hash.match(/^#\/(\d+)\//)?.[1]||address.pathname.match(/^\/home\/(?:course|learn\/new)\/(\d+)/)?.[1];
+    const account=session[cx?'cxGradeAccount':'gradeAccount']?.hash;
+    if(/^[a-f0-9]{64}$/.test(account||''))cached=local[cx?'cxGradeCache':'gradeCache']?.accounts?.[account]?.courses?.[id];
+   }catch{}
+   const name=cached?.seenAt>Date.now()-KEEP?UoocPlatforms.courseTitle(cached.name):'';
+   return {...item,title:name||'课程名称待更新'};
+  });
  }
  async function timer(message,sender){
   const key=String(sender.tab.id),name=prefix+key;
@@ -90,7 +113,7 @@
     return serial(async()=>{if(message.type==='activityReport')return report(message,sender);const data=await load();logEntry(data,message.event,message.stage,message.code);await chrome.storage.local.set({activityData:data});return {};});
    }
    if(role!=='options'&&role!=='popup')throw Error('此操作仅供扩展页面使用');
-   if(message.type==='overview')return serial(async()=>summarize(await load()));
+   if(message.type==='overview')return serial(async()=>{const data=await load();await recentTitles(data);return summarize(data);});
    if(message.type==='settingsGet')return serial(async()=>{const data=await chrome.storage.local.get(Object.keys(UoocSettings.defaults));return UoocSettings.validate(data,false);});
    if(role!=='options')throw Error('此操作仅供设置页使用');
    if(message.type==='settingsSave')return serial(async()=>{

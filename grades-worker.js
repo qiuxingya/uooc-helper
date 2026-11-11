@@ -9,13 +9,13 @@
  async function state(){return (await chrome.storage.session.get(['gradeJob','gradeAccount']));}
  async function save(job){await chrome.storage.session.set({gradeJob:job});}
  function prune(cache){cache=cache?.version===1?cache:{version:1,accounts:{}};for(const [account,bucket] of Object.entries(cache.accounts)){
-  if(!hash(account)){delete cache.accounts[account];continue;}for(const [cycle,row] of Object.entries(bucket.courses||{})){if(!id(cycle)||row.seenAt<Date.now()-KEEP)delete bucket.courses[cycle];else if(row.snapshot?.updatedAt<Date.now()-KEEP)row.snapshot=null;}
+  if(!hash(account)){delete cache.accounts[account];continue;}for(const [cycle,row] of Object.entries(bucket.courses||{})){if(!id(cycle)||!Number.isFinite(row?.seenAt)||row.seenAt<Date.now()-KEEP)delete bucket.courses[cycle];else if(row.snapshot?.updatedAt<Date.now()-KEEP)row.snapshot=null;}
   if(!Object.keys(bucket.courses||{}).length)delete cache.accounts[account];
  }return cache;}
  async function cache(){const data=prune((await chrome.storage.local.get('gradeCache')).gradeCache);return data;}
  async function note(event,code,count=0){const {gradeAudit=[]}=await chrome.storage.local.get('gradeAudit');gradeAudit.push({time:Date.now(),version:chrome.runtime.getManifest?.().version||'2.0.0',event,code,count});await chrome.storage.local.set({gradeAudit:gradeAudit.filter(x=>x.time>Date.now()-KEEP).slice(-200)});}
  async function close(job){await chrome.alarms.clear(ALARM);if(Number.isInteger(job?.tabId)){try{await chrome.tabs.sendMessage(job.tabId,{type:'gradeAbort'});}catch{}try{await chrome.tabs.remove(job.tabId);}catch{}}}
- async function finish(job,status,error=null){job.status=status;job.error=error;job.pending=null;job.finishedAt=Date.now();job.found=job.courses?.length||0;job.failed=Object.values(job.results||{}).filter(r=>r.error).length;job.results={};job.courses=[];job.account=null;await save(job);await close(job);await note('refresh',error||status,job.done||0);}
+ async function finish(job,status,error=null){job.status=status;job.error=error;job.pending=null;job.finishedAt=Date.now();job.found=job.courses?.length||0;job.failed=Object.values(job.results||{}).filter(r=>r.error).length;job.results={};job.courses=[];job.account=null;job.retryIds=null;await save(job);await close(job);await note('refresh',error||status,job.done||0);}
  async function invalidateAccount(){await chrome.storage.session.remove('gradeAccount');}
  function matchUrl(actual,expected){try{const a=new URL(actual),e=new URL(expected);return a.protocol===e.protocol&&a.hostname===e.hostname&&a.pathname===e.pathname&&a.hash===e.hash&&!a.username&&!a.password&&!a.port;}catch{return false;}}
  function task(job){const p=job.pending;return {jobId:job.id,token:p.token,kind:p.kind,category:p.category,action:p.action,beforePageKey:p.beforePageKey};}
@@ -38,7 +38,7 @@
  }
  async function complete(job){
   const data=await cache(),old=data.accounts[job.account]?.courses||{},courses={};
-  for(const course of job.courses){const previous=old[course.cycleId];courses[course.cycleId]={...course,seenAt:Date.now(),snapshot:previous?.snapshot||null,lastError:previous?.lastError||null,lastAttempt:previous?.lastAttempt||null};const staged=job.results[course.cycleId];if(staged){courses[course.cycleId].lastAttempt=staged.at;courses[course.cycleId].lastError=staged.error||null;if(staged.snapshot)courses[course.cycleId].snapshot=staged.snapshot;}}
+  for(const [order,course] of job.courses.entries()){const previous=old[course.cycleId];courses[course.cycleId]={...course,order,seenAt:Date.now(),snapshot:previous?.snapshot||null,lastError:previous?.lastError||null,lastAttempt:previous?.lastAttempt||null};const staged=job.results[course.cycleId];if(staged){courses[course.cycleId].lastAttempt=staged.at;courses[course.cycleId].lastError=staged.error||null;if(staged.snapshot)courses[course.cycleId].snapshot=staged.snapshot;}}
   data.accounts[job.account]={courses};await chrome.storage.local.set({gradeCache:prune(data)});await chrome.storage.session.set({gradeAccount:{hash:job.account,verifiedAt:Date.now()}});await finish(job,'done');
  }
  async function process(job,data,sender){
@@ -53,7 +53,7 @@
    job.categoryIndex++;
    if(job.categoryIndex<categories.length){await schedule(job,'list',CENTER+categories[job.categoryIndex],{category:categories[job.categoryIndex]});return;}
    if(job.only&&!job.courses.some(c=>c.cycleId===job.only))throw Error('NOT_ENROLLED');
-   job.targets=job.only?[job.only]:job.courses.map(c=>c.cycleId);job.index=0;job.done=0;await nextScore(job);return;
+   job.targets=job.only?[job.only]:job.courses.map(c=>c.cycleId).filter(cycle=>!job.retryIds||job.retryIds.includes(cycle));job.index=0;job.done=0;await nextScore(job);return;
   }
   if(pending.kind==='score'){
    const result=snapshot(data);job.results[job.targets[job.index]]={snapshot:result,at:Date.now()};job.index++;job.done++;await nextScore(job);return;
@@ -78,24 +78,35 @@
   if(Date.now()>p.deadline){await pageFailure(job,'PAGE_TIMEOUT');return {};}
   try{if(message.error)await pageFailure(job,message.error);else await process(job,message.data,sender);}catch(e){await pageFailure(job,Object.hasOwn(errors,e.message)?e.message:'READ_FAILED');}return {};
  }
- async function start(only){
+ async function start(only,retryFailed=false){
   if(only!==undefined&&!id(only))throw Error('课程标识无效');
-  const {gradeJob:previous}=await state();if(previous?.status==='running')throw Error('已有刷新任务，请等待或取消');
+  if(typeof retryFailed!=='boolean'||retryFailed&&only!==undefined)throw Error('重试参数无效');
+  const {gradeJob:previous,gradeAccount:account}=await state();if(previous?.status==='running')throw Error('已有刷新任务，请等待或取消');
+  let retryIds=null,expectedAccount=null;
+  if(retryFailed){
+   if(!hash(account?.hash))throw Object.assign(Error('请先刷新课程确认当前账号'),{code:'LOGIN_REQUIRED'});
+   expectedAccount=account.hash;
+   const data=await cache();
+   retryIds=Object.entries(data.accounts[expectedAccount]?.courses||{}).filter(([,course])=>course.lastError).map(([cycle])=>cycle);
+   if(!retryIds.length)return {started:false,code:'NO_FAILED_COURSES'};
+  }
   await invalidateAccount();const tab=await chrome.tabs.create({url:'about:blank',active:false});
-  const job={id:token(),tabId:tab.id,status:'running',phase:'list',categoryIndex:0,courses:[],pages:[],targets:[],results:{},index:0,done:0,only:only||null,startedAt:Date.now(),account:null};
+  const job={id:token(),tabId:tab.id,status:'running',phase:'list',categoryIndex:0,courses:[],pages:[],targets:[],results:{},index:0,done:0,only:only||null,retryIds,startedAt:Date.now(),account:expectedAccount};
   await schedule(job,'list',CENTER+'learn',{category:'learn'});await note('refresh','START');return {id:job.id};
  }
  async function get(){
   const {gradeJob:job,gradeAccount:account}=await state();const data=await cache();
   const courses=hash(account?.hash)?Object.values(data.accounts[account.hash]?.courses||{}):[];
-  return {verified:hash(account?.hash),courses,job:job?{id:job.id,status:job.status,phase:job.phase,done:job.done||0,total:job.targets?.length||0,found:job.courses?.length||job.found||0,failed:job.failed||0,error:job.error?errors[job.error]||errors.READ_FAILED:null}:null};
+  const current=job?.status==='running'&&job.phase==='score'?job.courses.find(course=>course.cycleId===job.targets[job.index]):null;
+  const failed=job?.status==='running'?Object.values(job.results||{}).filter(result=>result.error).length:job?.failed||0;
+  return {verified:hash(account?.hash),courses,job:job?{id:job.id,status:job.status,phase:job.phase,done:job.done||0,total:job.targets?.length||0,found:job.courses?.length||job.found||0,failed,currentCourse:current?{cycleId:current.cycleId,name:current.name}:null,errorCode:job.error||null,error:job.error?errors[job.error]||errors.READ_FAILED:null}:null};
  }
  async function observeAccount(message,sender){
   if(message.account!=='logout'&&!/^https:\/\/www\.uooc\.net\.cn\/home#\/center\/course\/(learn|nostart|finish|follow)$/.test(sender.url))return {};
   if(message.account!=='logout'&&!hash(message.account))return {};
   const {gradeJob:job}=await state();
   if(message.account==='logout'){await invalidateAccount();if(job?.status==='running')await finish(job,'failed','LOGIN_REQUIRED');}
-  else{if(job?.status==='running'&&job.account&&job.account!==message.account)await finish(job,'failed','ACCOUNT_CHANGED');await chrome.storage.session.set({gradeAccount:{hash:message.account,verifiedAt:Date.now()}});}
+  else{if(job?.status==='running'&&job.account&&job.account!==message.account){await invalidateAccount();await finish(job,'failed','ACCOUNT_CHANGED');return {};}await chrome.storage.session.set({gradeAccount:{hash:message.account,verifiedAt:Date.now()}});}
   return {};
  }
  async function restore(){
@@ -128,7 +139,7 @@
     const cycle=new URL(sender.url).pathname.match(/^\/home\/course\/(\d+)/)?.[1]||new URL(sender.url).pathname.match(/^\/home\/learn\/new\/(\d+)/)?.[1]||new URL(sender.url).hash.match(/^#\/(\d+)\//)?.[1];const info=await get();return {course:info.verified&&id(cycle)?info.courses.find(c=>c.cycleId===cycle)||null:null,verified:info.verified};
    }
    if(role!=='grades')throw Error('此操作仅供课程总览页使用');
-   if(message.type==='gradesStart')return start(message.cycleId);
+   if(message.type==='gradesStart')return start(message.cycleId,message.retryFailed);
    if(message.type==='gradesCancel'){const {gradeJob:job}=await state();if(job?.status==='running')await finish(job,'cancelled','CANCELLED');return {};}
    if(message.type==='gradesGet')return get();
    if(message.type==='gradesClear'){const {gradeJob:job,gradeAccount:account}=await state();if(job?.status==='running')throw Error('请先取消刷新，再清空快照');if(hash(account?.hash)){const data=await cache();delete data.accounts[account.hash];await chrome.storage.local.set({gradeCache:data});}return {};}

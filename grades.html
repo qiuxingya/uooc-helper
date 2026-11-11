@@ -1,1 +1,57 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>课程与成绩 · 优课学习助手</title><link rel="icon" href="icons/icon-32.png"><link rel="stylesheet" href="grades.css"></head><body><div class="shell"><header><div class="brand"><img src="icons/icon-48.png" width="42" height="42" alt=""><div>优课学习助手<small>COURSES & GRADES</small></div></div><button id="settings" class="quiet">设置与工具 ↗</button></header><main><div class="heading"><div><span class="eyebrow">YOUR LEARNING, AT A GLANCE</span><h1>课程与成绩</h1><p>网站的完成度与已显示成绩，集中查看。</p></div><div class="actions"><button id="refresh" class="primary">一键刷新全部课程</button><button id="cancel" hidden>取消刷新</button></div></div><section class="notice"><div><span id="accountState" class="badge">等待确认账号</span><p id="scanStatus" role="status" aria-live="polite">请先登录优课，再点击“一键刷新全部课程”。</p></div><a id="centerLink" href="https://www.uooc.net.cn/home#/center/course/learn" target="_blank" rel="noopener noreferrer">打开优课课程中心 ↗</a></section><div class="filters"><label>平台<select id="platform"><option value="uooc">优课 UOOC</option><option value="chaoxing">学习通</option></select></label><label><span class="sr-only">搜索课程名称</span><input id="search" type="search" placeholder="搜索课程名称…"></label><label><span class="sr-only">课程状态</span><select id="filter"><option value="all">全部课程</option><option value="learn">开课中</option><option value="nostart">即将开始</option><option value="finish">已结束</option></select></label><span id="courseCount">0 门课程</span></div><div id="courses" aria-live="polite"></div><p id="empty" class="empty">确认当前账号后，会在这里显示课程快照。</p><footer><p id="progressHelp">主进度为“视频＋测验”。当前得分与最终总评分别显示，成绩以网站为准。快照仅存本机，保留 30 天。</p><button id="clear" class="quiet">清空当前账号快照</button></footer><p id="error" role="alert"></p></main></div><script src="grades.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>课程与成绩 · 优课学习助手</title>
+ <link rel="icon" href="icons/icon-32.png">
+ <link rel="stylesheet" href="grades.css">
+</head>
+<body>
+ <div class="shell">
+  <header>
+   <div class="brand"><img src="icons/icon-48.png" width="42" height="42" alt=""><div>优课学习助手<small>课程学习快照</small></div></div>
+   <button id="settings" class="quiet">设置与工具 ↗</button>
+  </header>
+  <main>
+   <div class="heading">
+    <div><h1>课程与成绩</h1><p>查看网站进度与成绩，继续处理未完成的刷新。</p></div>
+    <div class="actions">
+     <button id="refresh" class="primary">一键刷新全部课程</button>
+     <button id="retryFailed" hidden>重试失败课程</button>
+     <button id="cancel" hidden>取消刷新</button>
+    </div>
+   </div>
+   <section class="notice" aria-label="刷新状态">
+    <div class="scan-details">
+     <span id="accountState" class="badge">等待确认账号</span>
+     <p id="scanStatus" role="status" aria-live="polite">请先登录优课，再点击“一键刷新全部课程”。</p>
+     <progress id="scanProgress" aria-label="课程刷新进度" hidden></progress>
+    </div>
+    <a id="centerLink" href="https://www.uooc.net.cn/home#/center/course/learn" target="_blank" rel="noopener noreferrer">打开优课课程中心 ↗</a>
+   </section>
+   <section class="course-summary" aria-label="当前平台课程摘要">
+    <div><span>课程总数</span><strong id="totalCourses">—</strong></div>
+    <div><span>任务进度 100%</span><strong id="completedCourses">—</strong></div>
+    <div><span>读取失败或未读取</span><strong id="attentionCourses">—</strong></div>
+   </section>
+   <div class="filters">
+    <label><span class="sr-only">平台</span><select id="platform"><option value="uooc">优课 UOOC</option><option value="chaoxing">学习通</option></select></label>
+    <label class="search-field"><span class="sr-only">搜索课程名称</span><input id="search" type="search" placeholder="搜索课程名称…"></label>
+    <label><span class="sr-only">课程状态</span><select id="filter"><option value="all">全部课程</option><option value="learn">开课中</option><option value="nostart">即将开始</option><option value="finish">已结束</option></select></label>
+    <label><span class="sr-only">数据状态</span><select id="dataFilter"><option value="all">全部数据</option><option value="failed">读取失败</option><option value="unread">尚未读取</option></select></label>
+    <label><span class="sr-only">排序方式</span><select id="sort"><option value="website">网站顺序</option><option value="name">课程名称</option><option value="progressAsc">完成度升序</option><option value="progressDesc">完成度降序</option><option value="scoreDesc">当前得分降序</option><option value="updatedDesc">采集时间降序</option></select></label>
+    <span id="courseCount">0 门课程</span>
+   </div>
+   <div id="courses" aria-live="polite"></div>
+   <p id="empty" class="empty">确认当前账号后，会在这里显示课程快照。</p>
+   <footer>
+    <p id="progressHelp">主进度为“视频＋测验”。当前得分与最终总评分别显示，成绩以网站为准。快照仅存本机，保留 30 天。</p>
+    <button id="clear" class="quiet">清空当前账号快照</button>
+   </footer>
+   <p id="error" role="alert"></p>
+  </main>
+ </div>
+ <script src="grades.js"></script>
+</body>
+</html>
