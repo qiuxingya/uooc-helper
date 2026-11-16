@@ -3,9 +3,11 @@
   if(globalThis.UoocPlatforms?.platform(location.href)==='chaoxing'&&!/\/studentstudy$/.test(location.pathname))return;
   if(globalThis.UoocCourseReader&&await UoocCourseReader.ready)return;
   if(document.getElementById('uooc-learning-helper'))return;
+  const polymas=globalThis.PolymasLearning;
+  const manualExercises=!!globalThis.ChaoxingLearning||!!polymas;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.1.7';
-  const PLATFORM=globalThis.ChaoxingLearning?'学习通':'优课';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.2.0';
+  const PLATFORM=polymas?.name||(globalThis.ChaoxingLearning?'学习通':'优课');
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
   const shadow=host.attachShadow({mode:'closed'});
@@ -90,7 +92,7 @@
   el('minimize').onclick=()=>togglePanel(false);
   shadow.addEventListener('keydown',e=>{if(e.key==='Escape'){togglePanel(false);e.stopPropagation();}});
   const say=(text,nextPhase)=>{if(nextPhase)phase=nextPhase;el('state').textContent=text;el('orb').title=text;el('orb').dataset.mode=phase==='PAUSED'&&lastStopReason!=='manual'?'attention':playing?'running':'idle';nextAction.hidden=phase!=='PAUSED';nextAction.textContent=['MANUAL','EXAM','UNSUPPORTED'].includes(lastStopCode)?'请先在网站完成人工处理，再选择开始学习。':resumeMode==='quiz'?'检查上方提示后，点击“继续答题”恢复。':'检查上方提示后，点击“开始／继续连播”恢复。';renderProgress();}, log=text=>{el('log').textContent=(text+'\n'+el('log').textContent).slice(0,9000);};
-  el('openGrades').onclick=()=>featureMessage('gradesOpen',{platform:globalThis.ChaoxingLearning?'chaoxing':'uooc'});
+  el('openGrades').onclick=()=>featureMessage('gradesOpen',{platform:polymas?'polymas':globalThis.ChaoxingLearning?'chaoxing':'uooc'});
   const connected=!!chrome.runtime.onMessage?.addListener;
   const featureMessage=(type,data={})=>connected?chrome.runtime.sendMessage({type,...data}).then(r=>r?.error?null:r?.result).catch(()=>null):Promise.resolve(null);
   let gradeSummaryRequest=0;
@@ -100,6 +102,7 @@
     if(!el('panel').hidden)refreshGradeSummary();
   }
   async function refreshGradeSummary(){
+    if(polymas){const request=++gradeSummaryRequest,address=location.href,data=await featureMessage('pmGradeSummary');if(request!==gradeSummaryRequest||address!==location.href)return;const snapshot=data?.course?.snapshot;el('gradeSummary').textContent='网站学习资源进度：'+(polymas.progress()||'请在资源列表查看')+' · 当前总分：'+(snapshot?.current?.state==='value'?snapshot.current.value:snapshot?.current?.state==='unpublished'?'未公布':data?.ambiguous?'请在总览选择班级学期':'请到总览刷新');return;}
     const request=++gradeSummaryRequest,address=location.href;
     const chaoxing=!!globalThis.ChaoxingLearning;
     const data=await featureMessage(chaoxing?'cxGradeSummary':'gradeSummary');
@@ -120,7 +123,7 @@
   function placePanel(){
     const box=el('panel');if(box.hidden)return;
     const orb=el('orb').getBoundingClientRect(),width=Math.min(330,innerWidth-24),above=orb.top>innerHeight/2;
-    box.style.width=width+'px';box.style.maxWidth='calc(100vw - 24px)';const available=Math.max(80,(above?orb.top:innerHeight-orb.bottom)-20);box.style.maxHeight='min('+available+'px,calc(100dvh - var(--panel-top,12px) - 12px))';
+    box.style.width=width+'px';box.style.maxWidth='calc(100vw - 24px)';const available=Math.max(80,(above?orb.top:innerHeight-orb.bottom)-20);box.style.maxHeight='min('+available+'px,calc(100dvh - 24px))';
     const left=Math.min(Math.max(12,orb.left>innerWidth/2?orb.right-width:orb.left),Math.max(12,innerWidth-width-12));
     box.style.left='clamp(12px,'+left+'px,calc(100vw - min(330px,100vw - 24px) - 12px))';const top=above?Math.max(12,orb.top-box.getBoundingClientRect().height-12):orb.bottom+12;box.style.setProperty('--panel-top','clamp(12px,'+top+'px,calc(100dvh - 80px))');box.style.top='var(--panel-top)';
   }
@@ -138,14 +141,15 @@
   });
   function finishDrag(e){if(!drag||drag.id!==e.pointerId)return;if(drag.moved){suppressClick=Date.now()+350;featureMessage('orbSave',{position});}drag=null;}
   el('orb').addEventListener('pointerup',finishDrag);el('orb').addEventListener('pointercancel',finishDrag);window.addEventListener('resize',placeOrb);
-  function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;if(globalThis.ChaoxingLearning){settings.autoSubmit=false;settings.autoExercises=false;el('autoSubmit').disabled=true;el('autoSubmit').title='学习通可编辑章节测验尚待适配，当前保留人工提交';el('solve').hidden=true;el('autoSubmit').closest('label').hidden=true;el('solve').disabled=true;el('solve').title='学习通可编辑章节测验样例尚未取得，暂保留人工作答';}el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':(globalThis.ChaoxingLearning?'学习通视频按顺序连播；遇到章节测验暂停。<br>可编辑测验尚待适配，当前请人工作答、保存及交卷。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。');if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;el('rate').value=String(settings.rate);resumeLabels();const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
+  el('moreTools').addEventListener('toggle',placePanel);
+  function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;if(manualExercises){settings.autoSubmit=false;settings.autoExercises=false;el('autoSubmit').disabled=true;el('autoSubmit').title=PLATFORM+'可编辑章节测验尚待适配，当前保留人工提交';el('solve').hidden=true;el('autoSubmit').closest('label').hidden=true;el('solve').disabled=true;el('solve').title=PLATFORM+'可编辑章节测验样例尚未取得，暂保留人工作答';}el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':(manualExercises?'当前平台视频按顺序连播；遇到章节测验暂停。<br>可编辑测验尚待适配，当前请人工作答、保存及交卷。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。');if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;el('rate').value=String(settings.rate);resumeLabels();const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
   const settingsReady=connected?featureMessage('uiGet').then(data=>{if(data){applySettings(data.settings);position=data.position;placeOrb();}}):chrome.storage.sync.get('settings').then(data=>applySettings(data.settings));
   chrome.storage.onChanged?.addListener((changes,area)=>{
     if(area==='sync'&&changes.settings?.newValue)applySettings(changes.settings.newValue);
     const chaoxing=!!globalThis.ChaoxingLearning;
-    const account=area==='session'&&changes[chaoxing?'cxGradeAccount':'gradeAccount'];
+    const account=area==='session'&&changes[polymas?'pmGradeAccount':chaoxing?'cxGradeAccount':'gradeAccount'];
     if(account&&account.oldValue?.hash!==account.newValue?.hash)resetGradeSummary();
-    else if(area==='local'&&changes[chaoxing?'cxGradeCache':'gradeCache']&&!el('panel').hidden)refreshGradeSummary();
+    else if(area==='local'&&changes[polymas?'pmGradeCache':chaoxing?'cxGradeCache':'gradeCache']&&!el('panel').hidden)refreshGradeSummary();
   });
   el('autoSubmit').onchange=()=>{const autoSubmit=el('autoSubmit').checked;applySettings({...settings,autoSubmit});featureMessage('settingsPatch',{patch:{autoSubmit}});};
   el('rate').onchange=()=>{const rate=Number(el('rate').value);applySettings({...settings,rate});featureMessage('settingsPatch',{patch:{rate}});};
@@ -183,6 +187,7 @@
   }
   function courseName(){
     const clean=globalThis.UoocPlatforms?.courseTitle||((value)=>value?.trim()||'');
+    if(polymas)return clean(polymas.title());
     const selectors=['.course-name','.courseName','.course-name-title','.course-title','.courseTitle','header h1','header h2','header h3','h1,h2,h3'];
     for(const selector of selectors){
       for(const heading of document.querySelectorAll(selector)){
@@ -219,6 +224,7 @@
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   const wait=()=>sleep(settings.delay*1000);
   const visible=e=>{
+    if(polymas?.isPlayer(e))return e.isConnected&&!!e.getClientRects().length;
     if(!e.getClientRects().length || e.ownerDocument.defaultView.getComputedStyle(e).visibility==='hidden')return false;
     let doc=e.ownerDocument;
     while(doc!==document){const frame=doc.defaultView?.frameElement;if(!frame||!frame.getClientRects().length)return false;doc=frame.ownerDocument;}
@@ -270,7 +276,7 @@
     // A paused player plus a visible modal also covers dialogs rendered beside it.
     return overlaps || !!(overlay&&visible(overlay)&&v.paused&&!v.ended);
   }
-  function questions() {
+  function questions() {if(polymas)return [];
     const scopes=assessmentDocuments(),collect=selector=>scopes.flatMap(doc=>query(selector,doc));
     let roots=(globalThis.ChaoxingLearning&&!settings.questionSelector?ChaoxingLearning.questionRoots():collect(settings.questionSelector || '.ti,.question-item,.question_item,.question,fieldset,[data-question-id],.exam-item,.test-item')).filter(visible);
     if(!roots.length) {
@@ -300,7 +306,7 @@
       return {root,inputs,payload:{text,type:inputs[0].type==='checkbox'?'multiple':'single',options}, signature:JSON.stringify({text,options})};
     }).filter(Boolean);
   }
-  function videos(){const list=query('video').filter(visible);return globalThis.ChaoxingLearning?ChaoxingLearning.selectVideos(list):list;}
+  function videos(){if(polymas)return polymas.videos();const list=query('video').filter(visible);return globalThis.ChaoxingLearning?ChaoxingLearning.selectVideos(list):list;}
   const savedQuestions=new WeakMap(),savedBatches=new WeakMap(),savedNavigation=new WeakMap(),submittedDocs=new WeakSet();
   function speed(v){if(v.defaultPlaybackRate!==settings.rate)v.defaultPlaybackRate=settings.rate;if(v.playbackRate!==settings.rate)v.playbackRate=settings.rate;}
   async function advance(token,initial=false,laterChapter=false){
@@ -472,7 +478,7 @@
           if(settings.autoSubmit){if(!await submitQuiz(token,answered))return null;submittedDocs.add(current[0].root.ownerDocument);log('网站已确认测验提交成功，继续后续资源');}
           current.forEach(q=>savedQuestions.set(q.root,q.signature));if(!await leaveSavedQuiz(answered,token))return null;n=0;
         }
-        finally{if(token===epoch){busy=false;el('solve').disabled=!!globalThis.ChaoxingLearning;}}
+        finally{if(token===epoch){busy=false;el('solve').disabled=manualExercises;}}
         continue;
       }
       const list=videos();if(!list.length&&n>=4&&globalThis.UoocCatalog?.picker?.()&&!recoveredPickers.has(location.href)){recoveredPickers.add(location.href);log('当前为目录占位页，继续查找可播放资源');await advance(token,true);continue;}if(list.length===1&&!list[0].ended){speed(list[0]);return list[0];}
@@ -483,7 +489,7 @@
   function stop(message,reason='error',code) {
     lastStopReason=reason;lastStopCode=reason==='timer'?'TIMER':reason==='manual'?'PAUSE':code||'UNKNOWN';
     sample(true);flushStats();playing=false;epoch++;deadline=0;clearTimeout(deadlineTimeout);busy=false;advancing=false;submitting=false;reviewResolver?.(false);reviewResolver=null;review.hidden=true;
-    query('video').forEach(v=>v.pause());say(message,'PAUSED');el('play').disabled=false;el('solve').disabled=!!globalThis.ChaoxingLearning;resumeLabels();lastStopCode=reason==='timer'?'TIMER':reason==='manual'?'PAUSE':code||classify(message);
+    query('video').forEach(v=>v.pause());polymas?.pause();say(message,'PAUSED');el('play').disabled=false;el('solve').disabled=manualExercises;resumeLabels();lastStopCode=reason==='timer'?'TIMER':reason==='manual'?'PAUSE':code||classify(message);
     cancelBarrier=featureMessage('cancelRequests');featureMessage('timerStop',{run});record(reason==='error'?'error':reason==='timer'?'timer':'pause',lastStopCode);
     if(reason==='error')beepOnce(lastStopCode);renderStats();
   }
@@ -502,7 +508,7 @@
       v.addEventListener('pause',()=>{sample(true);flushStats();});
       v.addEventListener('waiting',()=>{sample(true);sampleState=null;});
       v.addEventListener('ended', async()=>{
-        if(!playing||advancing||!valid(epoch)||!v.isConnected||!visible(v)||videoOwners.get(v)!==epoch) return;if(!finishVideo(v))return;globalThis.ChaoxingLearning?.markEnded(v);advancing=true;const token=epoch;say(`本次已播完 ${completed} 节，等待切换`);
+        if(!playing||advancing||!valid(epoch)||!v.isConnected||!visible(v)||videoOwners.get(v)!==epoch) return;if(!finishVideo(v))return;globalThis.ChaoxingLearning?.markEnded(v);polymas?.markEnded(v);advancing=true;const token=epoch;say(`本次已播完 ${completed} 节，等待切换`);
         try {await wait();if(!valid(token)||!playing)return;if(blocked())throw Error('需要人工处理当前页面');
           await advance(token);
           const nextVideo=await loadedVideo(token);if(!nextVideo||!valid(token))return;
@@ -598,7 +604,7 @@
       return batch;
   }
   el('solve').onclick=async()=>{
-    if(globalThis.ChaoxingLearning){say('学习通可编辑测验尚待适配，请人工作答与保存');return;}
+    if(manualExercises){say(PLATFORM+'可编辑测验尚待适配，请人工作答与保存');return;}
     if(busy)return;alerted.clear();prepareAudio();stop('正在读取题目','manual');resumeMode='quiz';resumeLabels();phase='QUESTION';const token=epoch;busy=true;el('solve').disabled=true;el('play').disabled=true;
     try {await solveQuestions(token);
     }catch(e){if(token===epoch){lastStopReason='error';lastStopCode=e.code||'UNKNOWN';say(e.message || '请求失败','PAUSED');record('error',lastStopCode);beepOnce(lastStopCode);}}finally{if(token===epoch){busy=false;el('solve').disabled=false;el('play').disabled=false;resumeLabels();}}

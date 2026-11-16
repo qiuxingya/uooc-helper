@@ -134,7 +134,7 @@
    if(message.type==='gradeHello')return hello(sender);
    if(message.type==='gradeResult')return result(message,sender);
    if(message.type==='gradeAccount')return observeAccount(message,sender);
-   if(message.type==='gradesOpen'){if(!['course','popup','options','grades'].includes(role))throw Error('未授权操作');await chrome.tabs.create({url:chrome.runtime.getURL('grades.html')+(message.platform==='chaoxing'?'?platform=chaoxing':''),active:true});return {};}
+   if(message.type==='gradesOpen'){if(!['course','popup','options','grades'].includes(role))throw Error('未授权操作');await chrome.tabs.create({url:chrome.runtime.getURL('grades.html')+(['chaoxing','polymas'].includes(message.platform)?'?platform='+message.platform:''),active:true});return {};}
    if(message.type==='gradeSummary'){
     const cycle=new URL(sender.url).pathname.match(/^\/home\/course\/(\d+)/)?.[1]||new URL(sender.url).pathname.match(/^\/home\/learn\/new\/(\d+)/)?.[1]||new URL(sender.url).hash.match(/^#\/(\d+)\//)?.[1];const info=await get();return {course:info.verified&&id(cycle)?info.courses.find(c=>c.cycleId===cycle)||null:null,verified:info.verified};
    }

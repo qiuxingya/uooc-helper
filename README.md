@@ -7,12 +7,14 @@
 <p align="center">课程连播 · DeepSeek 辅助答题 · 课程与成绩总览 · 本机登录保持</p>
 
 <p align="center">
-  <img alt="版本" src="https://img.shields.io/badge/version-2.1.7-167C68">
+  <img alt="版本" src="https://img.shields.io/badge/version-2.2.0-167C68">
   <img alt="架构" src="https://img.shields.io/badge/Manifest-V3-286D58">
   <img alt="浏览器" src="https://img.shields.io/badge/browser-Edge%20%7C%20Chrome-426F65">
 </p>
 
 面向优课 UOOC 与学习通的桌面浏览器扩展，提供视频连播、倍速、学习统计和课程成绩查看；优课支持 DeepSeek 辅助填写习题。原生 JavaScript 实现，无需安装 Node.js 或执行构建命令即可加载。
+
+**2.2.0 AI教学中心适配**。接入 POLYMAS 学习资源视频连播、倍速、定时与统计，新增智能体课程成绩总览和统一登录保持。成绩按课程、班级、学期区分；先核对教师公布设置，未公布时不读取分数。可编辑习题仍未适配，不能等同于知到共享课全站支持。
 
 **2.1.7 学习概览与课程成绩管理**。最近学习显示具体课程名，自动更新时保留展开状态和上次成功结果。成绩页新增课程摘要、数据状态筛选与排序，并可集中重试失败课程。测验题目与残留视频弹题分开识别，修复保存后无法继续视频的问题。
 
@@ -34,7 +36,7 @@
 
 **2.0.0 学习通适配版**：接入章节多视频连播、倍速、定时停止、学习统计、独立成绩总览与登录保持开关。学习通可编辑章节测验尚缺真实样例，暂由人工作答和提交；课程与成绩已通过真实账号复测；真实连播与登录检测尚待反馈。原优课答题流程保留。
 
-从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.1.7**。本机助手不会自动覆盖包含新增访问范围的版本。
+从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.2.0**。本机助手不会自动覆盖包含新增访问范围的版本。
 
 > 本项目为非官方工具，与优课、学习通及 DeepSeek 无隶属关系。请遵守课程和平台的使用要求。模型可能答错，插件不会保证成绩、绕过闯关验证或伪造学习记录。
 
@@ -42,9 +44,31 @@
 
 [页面预览](#页面预览) · [功能概览](#功能概览) · [安装](#安装) · [DeepSeek 配置](#配置-deepseek) · [日常使用](#日常使用) · [答题恢复](#答题恢复与有限重试) · [登录保持](#登录保持) · [版本与更新](#版本与更新) · [课程与成绩](#课程完成度与成绩) · [数据与权限](#数据与权限) · [常见问题](#常见问题)
 
+## POLYMAS 学习资源入口
+
+本次核验的域名为 `hike-teaching-center.polymas.com`，播放器位于 `polymas.com/resource/online/preview/`。视频中可出现智慧树水印，但这不代表知到其他课程模式已适配。
+
+- 在“我的学习 → 学习资源”展开课程目录，点击悬浮球中的“开始连播”。也可先打开一个视频再开始。
+- 通过文件名识别视频，使用网站的绿色完成标记，避免把普通勾选框当成完成状态或习题。PDF、PPT 等课件保留人工查看。
+- 正常结束后选择后续未完成视频，后续视频沿用倍速；启动中、切换中或定时到点都可暂停。
+- 本机记录沿用原有统计规则与最近学习；只在助手运行期间记录，不修改网站进度、不补写观看时长。
+- 页面当前显示的“总学习进度”是全部学习资源口径，独立显示在面板更多区域；不推算成“视频＋测验”完成度，也不生成成绩缓存。
+- 成绩页平台选择新增“AI教学中心”，仅汇总已选智能体课程，可搜索、排序、刷新本课、取消及重试失败课程。教师未公布时显示“未公布”，归档且已公布后才显示总评；真实 0 分独立保留。
+- 总览按账号隔离，本机快照保留 30 天。成绩接口未提供资源完成度时显示“暂无数据”，不会把成绩或课件进度推算成视频＋测验完成度。
+- 登录保持纳入原统一开关，分别显示三平台状态。首次授权 Cookie 和三个精确域名；先用官方接口验证学生身份，只将已知会话型认证 Cookie 保留最多 7 天，不延长网站已有到期时间，不备份令牌，不恢复主动退出的会话。
+- 可编辑习题、自动保存和交卷仍待适配。
+
+**从旧版升级须手动替换安装目录并重新加载扩展**：2.2.0 新增上述两个精确页面范围的访问能力，本机助手会拒绝自动覆盖权限发生变化的版本。沿用助手 1.1.0，无需另装助手即可使用视频功能。安装包见下方 Release 下载入口。
+
+<p align="center"><img src="docs/screenshots/latest-2.2.0-polymas-panel.png" width="330" alt="POLYMAS 学习资源悬浮面板，当前源码渲染，模拟课程"></p>
+
+<p align="center"><img src="docs/screenshots/latest-2.2.0-polymas-grades.png" width="1000" alt="AI教学中心成绩总览，模拟课程与成绩"><img src="docs/screenshots/latest-2.2.0-polymas-grades-mobile.png" width="320" alt="AI教学中心成绩总览窄屏，模拟数据"></p>
+
+首次点击刷新会申请账号与成绩读取权限。这里使用官方只读接口，不创建扫描播放器，不调用刷新成绩或修改成绩接口。网站课程入口由用户手动进入，助手不会自动开始学习。
+
 ## 页面预览
 
-学习概览、成绩页及错误恢复预览由 v2.1.7 渲染，其他布局沿用 v2.1.3。课程、成绩、登录状态与读取失败均为模拟数据。更新视图中的新版信息仅用于演示，窄屏展示用于检查布局。
+AI教学中心、连接与账号及统一登录保持预览由 v2.2.0 当前源码渲染；优课、学习通的学习概览、成绩及错误恢复沿用 v2.1.7，其他未变化布局沿用 v2.1.3。课程、成绩、登录状态与读取失败均为模拟数据。更新视图中的新版信息仅用于演示，窄屏展示用于检查布局。
 
 <p align="center"><img src="docs/screenshots/latest-2.1.7-popup-overview.png" width="360" alt="最近学习显示具体课程名，模拟数据"></p>
 
@@ -84,13 +108,13 @@
 
 ### 分类设置与统一登录保持
 
-设置分为常用设置、连接与账号、高级工具；两平台共用登录保持开关。“删除密钥”采用浅红描边及垃圾桶图标。
+设置分为常用设置、连接与账号、高级工具；三平台共用登录保持开关。“删除密钥”采用浅红描边及垃圾桶图标。
 
-<p align="center"><img src="docs/screenshots/latest-2.1.3-settings.png" width="1000" alt="最新版常用设置分类"><img src="docs/screenshots/latest-2.1.3-account.png" width="1000" alt="最新版模型连接、删除密钥和统一登录保持"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-settings.png" width="1000" alt="最新版常用设置分类"><img src="docs/screenshots/latest-2.2.0-account.png" width="1000" alt="最新版模型连接、删除密钥和统一登录保持"></p>
 
 <details><summary>查看窄屏与统一登录保持</summary>
 
-<p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="最新版窄屏密钥设置"><img src="docs/screenshots/latest-2.1.3-login-mobile.png" width="320" alt="最新版统一登录保持"><img src="docs/screenshots/latest-2.1.7-chaoxing-grades-mobile.png" width="320" alt="最新版学习通窄屏成绩"></p>
+<p align="center"><img src="docs/screenshots/latest-2.1.3-key-mobile.png" width="320" alt="最新版窄屏密钥设置"><img src="docs/screenshots/latest-2.2.0-login-mobile.png" width="320" alt="最新版统一登录保持"><img src="docs/screenshots/latest-2.1.7-chaoxing-grades-mobile.png" width="320" alt="最新版学习通窄屏成绩"></p>
 
 </details>
 
@@ -100,7 +124,7 @@
 
 ### 可选：首次启用 Windows 自动更新助手
 
-1. 下载并解压 `uooc-helper-2.1.7.zip`，替换原插件目录，在扩展管理页重新加载。
+1. 下载并解压 `uooc-helper-2.2.0.zip`，替换原插件目录，在扩展管理页重新加载。
 2. 打开设置页“版本与更新”，展开“首次安装本机助手”，复制扩展 ID。
 3. 下载并解压 `uooc-updater-windows.zip`，运行 `UoocUpdater.exe`。填写扩展 ID，选择浏览器当前实际加载、直接包含 manifest.json 的独立插件文件夹，再选择 Edge 或 Chrome，点击“关联并安装”。
 4. 回到插件设置，点击“授权并连接本机助手”。确认显示关联目录后，即可使用“立即更新”。
@@ -123,7 +147,7 @@
 
 ### 发布者操作
 
-上传与标签、manifest.json 一致的 `uooc-helper-版本.zip`，例如标签 `v2.1.7` 对应 `uooc-helper-2.1.7.zip`。每次发新版本都递增版本号。使用本机助手自动更新需提供 `uooc-updater-windows.zip`。静态更新客户端还需要正式版中的 `update.json` 和 `SHA256SUMS.txt`。
+上传与标签、manifest.json 一致的 `uooc-helper-版本.zip`，例如标签 `v2.2.0` 对应 `uooc-helper-2.2.0.zip`。每次发新版本都递增版本号。使用本机助手自动更新需提供 `uooc-updater-windows.zip`。静态更新客户端还需要正式版中的 `update.json` 和 `SHA256SUMS.txt`。
 
 完整GitHub源码包额外包含 `native-updater/`、`tools/build-release.ps1` 和 `.github/workflows/release.yml`。在允许脚本的Windows PowerShell环境可运行构建脚本生成两个 ZIP、静态清单 `update.json` 和 `SHA256SUMS.txt`。推送v开头标签或手动触发工作流会构建并创建Release草稿／附加安装包；检查附件后再发布，草稿不会被自动更新客户端选中。工作流需要仓库启用Actions，Release上传需要contents写权限。不要把GitHub源码包当作自动安装附件。
 
@@ -198,7 +222,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 适用于支持 Manifest V3 的桌面版 Edge 和 Chrome，当前自动化浏览器验证使用 Edge。Firefox、Safari 和移动端浏览器尚未验证。
 
-1. 从 [v2.1.7 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.1.7) 下载 `uooc-helper-2.1.7.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
+1. 从 [v2.2.0 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.2.0) 下载 `uooc-helper-2.2.0.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
 2. 打开浏览器扩展管理页：Edge 为 `edge://extensions/`，Chrome 为 `chrome://extensions/`。
 3. 开启“开发者模式”，选择“加载解压缩的扩展”。
 4. 选择直接包含 [manifest.json](manifest.json) 的文件夹，**不要选择 ZIP 文件**。
@@ -286,6 +310,8 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 ## 登录保持
 
+AI教学中心与优课、学习通共用一个开关。新增平台默认关闭，旧版两平台已开启时显示半选，须主动点击并授权才同时启用。AI教学中心成绩读取与登录保持分开控制：授权读取成绩不自动开启会话延长。网站服务端失效或主动退出后仍需自行登录。
+
 用于减少浏览器重开后的重复登录。优课与学习通使用一个“保留登录状态”开关，默认关闭；分别显示登录检测结果。升级前两个平台设置不同则显示半选状态，用户操作后统一，不擅自开启。
 
 1. 打开设置，勾选“保留登录状态（优课＋学习通）”。
@@ -343,7 +369,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 | 优课与学习通内容脚本 | 识别已适配课程页面，扫描页仅执行读取与必要导航 |
 | 可选 GitHub 访问 | 只读检查公开 Release；不发送 Key、成绩、Cookie 或课程内容 |
 | 可选 nativeMessaging 与课程页面状态访问 | 连接本机更新助手，在所有优课与学习通页面关闭后才覆盖文件 |
-| 可选 Cookie 与对应平台访问 | 开启对应登录保持时申请；处理已知会话 Cookie 并只读检测登录 |
+| 可选 Cookie 与对应平台访问 | 开启登录保持时申请；AI教学中心首次刷新成绩时也按需申请，用现有会话调用官方学生只读接口 |
 
 本机自动加密不等同于密码保险箱，无法防止能够访问整个浏览器配置的攻击者。项目不要求提供课程平台账号密码。
 
@@ -444,7 +470,7 @@ uooc-helper/
 
 1. 先处理尚未保存的答案，再用新版文件替换扩展原安装目录。
 2. 在扩展管理页点击“重新加载”，随后刷新课程页面；仅下载 ZIP 或仅刷新网页不一定能更新已安装的副本。
-3. 展开悬浮面板，确认顶部版本为 **v2.1.7**。
+3. 展开悬浮面板，确认顶部版本为 **v2.2.0**。
 4. 如果仍显示旧版，检查扩展实际加载目录，不要同时开启多个助手副本。
 
 ## 验证范围与反馈
@@ -459,6 +485,7 @@ uooc-helper/
 
 | 版本 | 主要变化 |
 | --- | --- |
+| 2.2.0 | POLYMAS 视频学习、智能体课程成绩总览及登录保持；公布保护、班级学期隔离与失败恢复；习题仍待适配 |
 | 2.1.7 | 课程名与概览恢复、课程成绩管理、失败课重试，以及残留弹题干扰保存的修复 |
 | 2.1.6 | 普通测验交卷时识别单击验证按钮，等待网站确认后续接 |
 | 2.1.5 | 优化两平台课程进度读取和账号切换，修复暂停后旧任务干扰新连播及更新失败后无法重试 |
@@ -477,7 +504,7 @@ uooc-helper/
 | 0.9.0 | 拖动悬浮球、倍速、定时、学习统计、诊断与备份 |
 | 0.8.1 | 免密码的 API Key 本机加密保存 |
 
-2.1.7 的课程名称、学习概览和成绩快照恢复见 [本版验证记录](docs/validation-2.1.7.md)。此前版本见 [2.1.6](docs/validation-2.1.6.md)、[2.1.5](docs/validation-2.1.5.md)、[2.1.4](docs/validation-2.1.4.md)、[2.1.3](docs/validation-2.1.3.md)、[2.1.2](docs/validation-2.1.2.md)、[2.1.1](docs/validation-2.1.1.md)、[2.1.0](docs/validation-2.1.0.md)、[2.0.1](docs/validation-2.0.1.md) 和 [2.0.0](docs/validation-2.0.0.md) 验证记录。
+2.2.0 的实际适配范围、真实页面检查与模拟测试见 [本版验证记录](docs/validation-2.2.0.md)。此前 2.1.7 的课程名称、学习概览和成绩快照恢复见 [2.1.7 验证记录](docs/validation-2.1.7.md)。此前版本见 [2.1.6](docs/validation-2.1.6.md)、[2.1.5](docs/validation-2.1.5.md)、[2.1.4](docs/validation-2.1.4.md)、[2.1.3](docs/validation-2.1.3.md)、[2.1.2](docs/validation-2.1.2.md)、[2.1.1](docs/validation-2.1.1.md)、[2.1.0](docs/validation-2.1.0.md)、[2.0.1](docs/validation-2.0.1.md) 和 [2.0.0](docs/validation-2.0.0.md) 验证记录。
 
 ## 开发与验证
 
@@ -485,7 +512,7 @@ uooc-helper/
 
 使用 Node.js 24 与桌面 Edge，运行 `npm install --ignore-scripts` 安装测试依赖，再运行 `npm test`。测试使用独立模拟页面与接口，不使用真实账号、真实 Key 或付费请求；截图写入已忽略的 `.test-artifacts/`。GitHub Actions 的稳定性回归使用同一入口。
 
-打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.1.7`，生成插件 ZIP、独立 Windows 本机助手 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录。
+打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.2.0`，生成插件 ZIP、独立 Windows 本机助手 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录。
 
 ### 弹窗内更新
 

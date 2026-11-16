@@ -1,4 +1,4 @@
-if(typeof importScripts==='function')importScripts('platforms.js','settings.js','activity.js','grades-worker.js','chaoxing-grades.js','login-session.js','chaoxing-login.js','updater.js');
+if(typeof importScripts==='function')importScripts('platforms.js','settings.js','activity.js','grades-worker.js','chaoxing-grades.js','login-session.js','chaoxing-login.js','polymas-api.js','polymas-login.js','polymas-grades.js','updater.js');
 const ENDPOINT = 'https://api.deepseek.com/chat/completions';
 const ready = Promise.all([
   chrome.storage.local.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}),
@@ -138,7 +138,9 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   const pageUrl=String(sender.url||'').split(/[?#]/)[0];
   const role=own&&pageUrl===chrome.runtime.getURL('grades.html')?'grades':own&&pageUrl===chrome.runtime.getURL('options.html')?'options':own&&pageUrl===chrome.runtime.getURL('popup.html')?'popup':own&&sender.tab&&(!sender.frameId)&&(globalThis.UoocPlatforms?UoocPlatforms.study(sender.url):/^https?:\/\/([a-z0-9-]+\.)*uooc\.net\.cn\//i.test(sender.url||''))?'course':own&&sender.tab&&!sender.frameId&&globalThis.UoocPlatforms?.platform(sender.url)==='chaoxing'?'cxpage':null;
   let task;
-  if(message.type==='cxAccountHint'&&own&&sender.tab&&globalThis.UoocPlatforms?.platform(sender.url)==='chaoxing'&&(/\/studentstudy(?:[?#]|$)/.test(sender.url)||/^https:\/\/(?:fycourse\.fanya|passport2|v8)\.chaoxing\.com\//.test(sender.url))){task=ChaoxingGrades.handle(message,sender,'cxaccount');}
+  if(globalThis.PolymasGrades?.types.has(message.type)){if(!role)return;task=PolymasGrades.handle(message,sender,role);}
+  else if(globalThis.PolymasLogin?.types.has(message.type)){if(!role)return;task=PolymasLogin.handle(message,sender,role);}
+  else if(message.type==='cxAccountHint'&&own&&sender.tab&&globalThis.UoocPlatforms?.platform(sender.url)==='chaoxing'&&(/\/studentstudy(?:[?#]|$)/.test(sender.url)||/^https:\/\/(?:fycourse\.fanya|passport2|v8)\.chaoxing\.com\//.test(sender.url))){task=ChaoxingGrades.handle(message,sender,'cxaccount');}
   else if(globalThis.ChaoxingGrades?.types.has(message.type)){if(!role)return;task=ChaoxingGrades.handle(message,sender,role);}
   else if(globalThis.UoocUpdater?.types.has(message.type)){if(!role)return;task=UoocUpdater.handle(message,sender,role);}
   else if(globalThis.ChaoxingLogin?.types.has(message.type)){if(!role)return;task=ChaoxingLogin.handle(message,sender,role);}
@@ -163,6 +165,8 @@ if(globalThis.UoocActivity)ready.then(()=>UoocActivity.restore()).catch(()=>{});
 if(globalThis.UoocGrades)ready.then(()=>UoocGrades.restore()).catch(()=>{});
 if(globalThis.UoocLogin)ready.then(()=>UoocLogin.restore()).catch(()=>{});
 if(globalThis.ChaoxingLogin)ready.then(()=>ChaoxingLogin.restore()).catch(()=>{});
+if(globalThis.PolymasGrades)ready.then(()=>PolymasGrades.restore()).catch(()=>{});
+if(globalThis.PolymasLogin)ready.then(()=>PolymasLogin.restore()).catch(()=>{});
 if(globalThis.ChaoxingGrades)ready.then(()=>ChaoxingGrades.restore()).catch(()=>{});
 if(globalThis.UoocUpdater)ready.then(()=>UoocUpdater.restore()).catch(()=>{});
 async function solve(q,tabId,allowGuess=false) {

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "优课学习助手",
-  "version": "2.1.7",
-  "description": "优课与学习通课程连播、倍速、习题辅助填写、学习统计、课程成绩和本机登录保持。",
+  "version": "2.2.0",
+  "description": "优课与学习通课程学习辅助；POLYMAS AI教学中心视频连播、倍速、统计、成绩总览与登录保持。",
   "permissions": [
     "storage",
     "alarms"
@@ -91,6 +91,30 @@
       ],
       "all_frames": true,
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://hike-teaching-center.polymas.com/custom-stu-hike/agent-course-full/*"
+      ],
+      "js": [
+        "platforms.js",
+        "settings.js",
+        "polymas-parser.js",
+        "polymas-adapter.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://polymas.com/resource/online/preview/*"
+      ],
+      "js": [
+        "polymas-parser.js",
+        "polymas-player.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
     }
   ],
   "optional_permissions": [
@@ -103,6 +127,9 @@
     "*://*.uooc.net.cn/*",
     "*://*.chaoxing.com/*",
     "https://github.com/*",
-    "https://release-assets.githubusercontent.com/*"
+    "https://release-assets.githubusercontent.com/*",
+    "https://cloudapi.polymas.com/*",
+    "https://polymas.com/*",
+    "https://hike-teaching-center.polymas.com/*"
   ]
 }
