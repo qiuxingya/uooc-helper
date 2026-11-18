@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "优课学习助手",
-  "version": "2.2.0",
-  "description": "优课与学习通课程学习辅助；POLYMAS AI教学中心视频连播、倍速、统计、成绩总览与登录保持。",
+  "version": "2.3.0",
+  "description": "优课、学习通与 AI教学中心学习辅助；智慧树共享课二倍速连播、弹题与普通章节作业 AI 辅助填写保存。",
   "permissions": [
     "storage",
     "alarms"
@@ -114,6 +114,19 @@
         "polymas-player.js"
       ],
       "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://studyvideoh5.zhihuishu.com/stuStudy*",
+        "https://onlineexamh5new.zhihuishu.com/stuExamWeb.html*"
+      ],
+      "js": [
+        "platforms.js",
+        "settings.js",
+        "zhihuishu-adapter.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],

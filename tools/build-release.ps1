@@ -11,7 +11,7 @@ $taskOut=[IO.Path]::GetFullPath($OutDirectory)
 New-Item -ItemType Directory -Path $taskOut -Force | Out-Null
 $taskStage=Join-Path $taskOut ('.stage-'+[guid]::NewGuid().ToString('N'))
 $taskExtension=Join-Path $taskStage 'uooc-helper'
-$taskHelper=Join-Path $taskStage 'native-helper'
+$taskHelper=Join-Path $taskExtension 'native-updater'
 New-Item -ItemType Directory -Path $taskExtension,$taskHelper -Force | Out-Null
 try{
  foreach($taskFile in Get-ChildItem -LiteralPath $taskSource -File){
@@ -31,15 +31,14 @@ try{
  $taskNative=Join-Path $taskRoot 'native-updater'
  if(-not (Test-Path -LiteralPath (Join-Path $taskNative 'UoocUpdater.cs'))){$taskNative=Join-Path (Split-Path $taskSource -Parent) 'native-updater'}
  & (Join-Path $taskNative 'build.ps1') -OutputDirectory $taskHelper
- foreach($taskName in 'README.md','UoocUpdater.cs','build.ps1'){Copy-Item -LiteralPath (Join-Path $taskNative $taskName) -Destination $taskHelper}
- if(Test-Path -LiteralPath (Join-Path $taskSource 'LICENSE')){Copy-Item -LiteralPath (Join-Path $taskSource 'LICENSE') -Destination $taskHelper}
+ foreach($taskName in 'README.md'){Copy-Item -LiteralPath (Join-Path $taskNative $taskName) -Destination $taskHelper}
  $taskZip=Join-Path $taskOut "uooc-helper-$taskVersion.zip"
- $taskNativeZip=Join-Path $taskOut 'uooc-updater-windows.zip'
+ $taskObsolete=Join-Path $taskOut 'uooc-updater-windows.zip'
+ if(Test-Path -LiteralPath $taskObsolete){if((Get-Item -LiteralPath $taskObsolete).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'Unexpected output link.'};Remove-Item -LiteralPath $taskObsolete -Force}
  Compress-Archive -LiteralPath $taskExtension -DestinationPath $taskZip -Force
- Compress-Archive -Path (Join-Path $taskHelper '*') -DestinationPath $taskNativeZip -Force
  $taskInfo=[ordered]@{format='uooc-update';schemaVersion=1;version=$taskVersion;tag="v$taskVersion";downloadUrl="https://github.com/qiuxingya/uooc-helper/releases/download/v$taskVersion/uooc-helper-$taskVersion.zip";sha256=(Get-FileHash -LiteralPath $taskZip -Algorithm SHA256).Hash.ToLowerInvariant();size=(Get-Item -LiteralPath $taskZip).Length;notes=(Get-Content -LiteralPath (Join-Path $taskSource 'RELEASE_NOTES.md') -Raw)}
  [IO.File]::WriteAllText((Join-Path $taskOut 'update.json'),($taskInfo|ConvertTo-Json -Depth 4),[Text.UTF8Encoding]::new($false))
- $taskLines=foreach($taskPackage in $taskZip,$taskNativeZip,(Join-Path $taskOut 'update.json')){$taskHash=Get-FileHash -LiteralPath $taskPackage -Algorithm SHA256;'{0}  {1}' -f $taskHash.Hash.ToLowerInvariant(),[IO.Path]::GetFileName($taskPackage)}
+ $taskLines=foreach($taskPackage in $taskZip,(Join-Path $taskOut 'update.json')){$taskHash=Get-FileHash -LiteralPath $taskPackage -Algorithm SHA256;'{0}  {1}' -f $taskHash.Hash.ToLowerInvariant(),[IO.Path]::GetFileName($taskPackage)}
  [IO.File]::WriteAllLines((Join-Path $taskOut 'SHA256SUMS.txt'),$taskLines,[Text.UTF8Encoding]::new($false))
  Write-Output "Release $taskVersion built in $taskOut"
 }finally{

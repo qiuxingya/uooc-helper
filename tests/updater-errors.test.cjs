@@ -10,7 +10,7 @@ test('写入待安装版本失败后清理忙碌状态，未调用助手安装',
   permissions:{contains:async()=>true},
   runtime:{id:'test',getManifest:()=>({version:'2.1.2'}),connectNative:()=>{
    let receive;
-   return {onMessage:{addListener:fn=>receive=fn},onDisconnect:{addListener:()=>{}},disconnect:()=>{},postMessage:m=>{commands.push(m.command);receive({ok:true,version:'2.1.2',helperVersion:'1.1.0'});}};
+   return {onMessage:{addListener:fn=>receive=fn},onDisconnect:{addListener:()=>{}},disconnect:()=>{},postMessage:m=>{commands.push(m.command);receive({ok:true,version:'2.1.2',helperVersion:'1.2.0'});}};
   }},
   alarms:{onAlarm:{addListener:()=>{}}},tabs:{query:async()=>[],onRemoved:{addListener:()=>{}}}
  }});

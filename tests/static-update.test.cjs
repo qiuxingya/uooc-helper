@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');function setup(){const c=vm.createContext({setTimeout,clearTimeout,AbortController,URL,chrome:{storage:{local:{get:async()=>({}),set:async()=>{}}},permissions:{contains:async()=>true},runtime:{getManifest:()=>({version:'2.1.2'})},alarms:{onAlarm:{addListener:()=>{}}},tabs:{onRemoved:{addListener:()=>{}}}}});vm.runInContext(fs.readFileSync('updater.js','utf8'),c);return c.UoocUpdater;}
 const good=()=>({format:'uooc-update',schemaVersion:1,version:'2.1.3',tag:'v2.1.3',downloadUrl:'https://github.com/qiuxingya/uooc-helper/releases/download/v2.1.3/uooc-helper-2.1.3.zip',size:123,sha256:'a'.repeat(64),notes:'更新说明'});
 test('静态清单字段正确转换，拒绝不可信下载和无效数据',()=>{const api=setup();assert.equal(api.parseManifest(good()).version,'2.1.3');for(const patch of [{format:'other'},{schemaVersion:2},{version:'bad'},{tag:'v2.1.2'},{size:0},{size:1.1},{size:52428801},{sha256:'bad'},{downloadUrl:'https://evil.example/file.zip'}])assert.throws(()=>api.parseManifest({...good(),...patch}));});
-test('插件和本机助手日常更新不使用 GitHub REST API',()=>{for(const name of ['updater.js','native-updater/UoocUpdater.cs'])assert.ok(!fs.readFileSync(name,'utf8').includes('api.github.com'));assert.match(fs.readFileSync('native-updater/UoocUpdater.cs','utf8'),/HelperVersion="1.1.0"/);});
+test('插件和本机助手日常更新不使用 GitHub REST API',()=>{for(const name of ['updater.js','native-updater/UoocUpdater.cs'])assert.ok(!fs.readFileSync(name,'utf8').includes('api.github.com'));assert.match(fs.readFileSync('native-updater/UoocUpdater.cs','utf8'),/HelperVersion="1.2.0"/);});
 
 test('手动重试检查立即恢复网络错误，成功后仍使用冷却时间',async()=>{
  let saved={source:'static-v1'},requests=0;
