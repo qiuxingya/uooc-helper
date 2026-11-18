@@ -7,7 +7,7 @@
   const polymas=globalThis.PolymasLearning,zhs=globalThis.ZhihuishuLearning;
   const manualExercises=!!globalThis.ChaoxingLearning||!!polymas;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.3.1';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.3.2';
   const PLATFORM=zhs?.name||polymas?.name||(globalThis.ChaoxingLearning?'学习通':'优课');
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';
@@ -33,7 +33,7 @@
   function renderProgress(){summary.hidden=!progress.total||!['QUESTION','RETRY','REVIEW','PAUSED'].includes(phase);summary.textContent=progress.total?`已填写 ${progress.filled}/${progress.total} · 当前第 ${progress.current} 题 · 推测 ${progress.guessed} · 重试 ${progress.retries}`:'';}
   function resumeLabels(){el('solve').textContent=(resumeMode==='quiz'||resumeMode==='video'&&progress.current>0&&progress.filled<progress.total)?'继续答题':'手动答题';el('play').textContent=zhs?.homework()?(resumeMode==='quiz'?'继续答题':'开始答题'):(resumeMode==='video'?'继续连播':'开始连播')+' · '+settings.rate+'×';}
   function interrupted(){return Object.assign(Error('操作已取消'),{code:'CANCELLED'});}
-  function runCurrent(token,context){if(!valid(token))return false;if(location.href!==context){stop('页面已变化，已暂停；请检查当前资源');return false;}return true;}
+  function runCurrent(token,context){if(!valid(token))return false;if(zhs?.blocked()){stop(zhs.stopReason(),'error','MANUAL');return false;}if(location.href!==context){stop('页面已变化，已暂停；请检查当前资源');return false;}return true;}
   function runWait(promise,token,context,timeoutMs=0){
     return new Promise((resolve,reject)=>{
       let done=false,timer;const start=Date.now();
@@ -54,7 +54,7 @@
       say(`正在分析第 ${progress.current}/${progress.total} 题${guess?'（请求最可能答案）':''}`,'QUESTION');
       await runWait(cancelBarrier,token,context);
       const fresh=questions().find(item=>item.root===q.root);
-      if(!fresh||fresh.signature!==q.signature||fresh.inputs.some((input,i)=>input!==q.inputs[i]))throw Object.assign(Error('题目页面已变化，已停止旧题请求，请检查后继续'),{code:'PAGE_CHANGED'});
+      if(!fresh||fresh.signature!==q.signature||fresh.scope!==q.scope||fresh.inputs.some((input,i)=>input!==q.inputs[i]))throw Object.assign(Error('题目页面已变化，已停止旧题请求，请检查后继续'),{code:'PAGE_CHANGED'});
       let response;
       try{response=await runWait(chrome.runtime.sendMessage({type:'solve',question:q.payload,...(guess?{allowGuess:true}:{})}),token,context);}
       catch(error){if(error.code==='CANCELLED')throw error;throw Object.assign(Error('扩展通信失败，请重新加载扩展'),{code:'COMMUNICATION'});}
@@ -78,13 +78,13 @@
   function matchesAnswer(q,answers){return !!answers&&q.inputs.every((input,i)=>q.payload.type==='blank'?input.value===answers[i]:input.checked===answers.includes(i));}
   async function reviewCheckpoint(items,token,context){
     const changed=[];
-    for(const q of items){const old=checkpoint.records.get(q.root);if(!old)continue;if(old.signature!==q.signature||old.document!==q.root.ownerDocument.URL){checkpoint.records.delete(q.root);continue;}if(!matchesAnswer(q,old.answers)){const answers=pageAnswers(q);if(!answers)throw Error('已修改的答案尚未完整，请先补全页面答案，再继续');changed.push({q,answers});}}
+    for(const q of items){const old=checkpoint.records.get(q.root);if(!old)continue;if(old.signature!==q.signature||old.document!==q.root.ownerDocument.URL||old.scope!==q.scope||old.inputs&&(old.inputs.length!==q.inputs.length||old.inputs.some((input,i)=>input!==q.inputs[i]))){checkpoint.records.delete(q.root);continue;}if(!matchesAnswer(q,old.answers)){const answers=pageAnswers(q);if(!answers)throw Error('已修改的答案尚未完整，请先补全页面答案，再继续');changed.push({q,answers});}}
     if(!changed.length)return;
     progress.current=items.indexOf(changed[0].q)+1;renderProgress();
     say(`有 ${changed.length} 道已填写题目被修改，请确认采用页面答案`,'REVIEW');review.hidden=false;togglePanel(true);placePanel();
     const accepted=await runWait(new Promise(resolve=>{reviewResolver=resolve;}),token,context).finally(()=>{if(token===epoch){review.hidden=true;reviewResolver=null;}});
     if(!accepted)throw Error('未确认采用页面答案，已保留修改并暂停');
-    for(const {q,answers} of changed){if(!matchesAnswer(q,answers))throw Error('确认期间页面答案再次变化，请重新核对');checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,answers,uncertain:false});}
+    for(const {q,answers} of changed){if(!matchesAnswer(q,answers))throw Error('确认期间页面答案再次变化，请重新核对');checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,scope:q.scope,inputs:[...q.inputs],answers,uncertain:false});}
   }
   el('acceptPageAnswers').onclick=()=>reviewResolver?.(true);
   el('cancelPageReview').onclick=()=>reviewResolver?.(false);
@@ -144,7 +144,7 @@
   function finishDrag(e){if(!drag||drag.id!==e.pointerId)return;if(drag.moved){suppressClick=Date.now()+350;featureMessage('orbSave',{position});}drag=null;}
   el('orb').addEventListener('pointerup',finishDrag);el('orb').addEventListener('pointercancel',finishDrag);window.addEventListener('resize',placeOrb);
   el('moreTools').addEventListener('toggle',placePanel);
-  function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;if(manualExercises){settings.autoSubmit=false;settings.autoExercises=false;el('autoSubmit').disabled=true;el('autoSubmit').title=PLATFORM+'可编辑章节测验尚待适配，当前保留人工提交';el('solve').hidden=true;el('autoSubmit').closest('label').hidden=true;el('solve').disabled=true;el('solve').title=PLATFORM+'可编辑章节测验样例尚未取得，暂保留人工作答';}if(zhs){settings.autoSubmit=false;el('autoSubmit').closest('label').hidden=true;}el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':(manualExercises?'当前平台视频按顺序连播；遇到章节测验暂停。<br>可编辑测验尚待适配，当前请人工作答、保存及交卷。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。');if(zhs)el('workflowHint').textContent=zhs.homework()?'逐题填写并保存，全部完成后请在网站正式提交。题目及选项将发送至 DeepSeek。':'视频沿用所选倍速；弹题自动填写后关闭。章节作业在网站打开后点击开始答题。题目及选项将发送至 DeepSeek。';if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;el('rate').value=String(settings.rate);resumeLabels();const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
+  function applySettings(value){const wasEnabled=settings.autoSubmit;settings={...settings,...value};settings.autoSubmit=settings.autoSubmit===true;if(manualExercises){settings.autoSubmit=false;settings.autoExercises=false;el('autoSubmit').disabled=true;el('autoSubmit').title=PLATFORM+'可编辑章节测验尚待适配，当前保留人工提交';el('solve').hidden=true;el('autoSubmit').closest('label').hidden=true;el('solve').disabled=true;el('solve').title=PLATFORM+'可编辑章节测验样例尚未取得，暂保留人工作答';}if(zhs){settings.autoSubmit=false;el('autoSubmit').closest('label').hidden=true;}el('autoSubmit').checked=!!settings.autoSubmit;el('workflowHint').innerHTML=settings.autoSubmit?'自动答题 → 保存并提交测验 → 继续视频<br>遇到验证或未通过会暂停。题目及选项将发送至 DeepSeek。':(manualExercises?'当前平台视频按顺序连播；遇到章节测验暂停。<br>可编辑测验尚待适配，当前请人工作答、保存及交卷。':'自动答题 → 保存答案 → 继续视频<br>提交留待你之后集中处理。题目及选项将发送至 DeepSeek。');if(zhs)el('workflowHint').textContent=zhs.homework()?'逐题填写并保存，全部完成后请在网站正式提交。题目及选项将发送至 DeepSeek。':'视频使用网站倍速按钮，最高 1.5×；弹题自动填写后关闭。章节作业在网站打开后点击开始答题。题目及选项将发送至 DeepSeek。';if(wasEnabled&&!settings.autoSubmit&&submitting)stop('已关闭自动提交，当前操作已暂停；已发出的交卷无法撤回','manual');if(![1,1.25,1.5,1.75,2].includes(settings.rate))settings.rate=2;if(zhs&&!zhs.homework()){settings.rate=zhs.rateLimit(settings.rate);for(const option of el('rate').options)option.disabled=Number(option.value)>1.5;}el('rate').value=String(settings.rate);resumeLabels();const preset=[0,15,30,60,120].includes(settings.timerMinutes);el('timer').value=preset?String(settings.timerMinutes):'custom';el('timerCustom').hidden=preset;el('timerCustom').value=String(settings.timerMinutes||30);if(playing)videos().forEach(speed);}
   const settingsReady=connected?featureMessage('uiGet').then(data=>{if(data){applySettings(data.settings);position=data.position;placeOrb();}}):chrome.storage.sync.get('settings').then(data=>applySettings(data.settings));
   chrome.storage.onChanged?.addListener((changes,area)=>{
     if(area==='sync'&&changes.settings?.newValue)applySettings(changes.settings.newValue);
@@ -310,7 +310,7 @@
   }
   function videos(){if(polymas)return polymas.videos();const list=query('video').filter(visible);return globalThis.ChaoxingLearning?ChaoxingLearning.selectVideos(list):list;}
   const savedQuestions=new WeakMap(),savedBatches=new WeakMap(),savedNavigation=new WeakMap(),submittedDocs=new WeakSet();
-  function speed(v){if(v.defaultPlaybackRate!==settings.rate)v.defaultPlaybackRate=settings.rate;if(v.playbackRate!==settings.rate)v.playbackRate=settings.rate;}
+  function speed(v){if(zhs){zhs.setSpeed(v,settings.rate);return;}if(v.defaultPlaybackRate!==settings.rate)v.defaultPlaybackRate=settings.rate;if(v.playbackRate!==settings.rate)v.playbackRate=settings.rate;}
   async function advance(token,initial=false,laterChapter=false){
     let selectedTarget=null;if(!settings.nextSelector&&globalThis.UoocCatalog?.available())await globalThis.UoocCatalog.advance(()=>!valid(token)||!playing,250,initial,settings.autoExercises,{onSelect:target=>selectedTarget=target,laterChapter:laterChapter||!!globalThis.UoocCatalog.gateNotice?.(),onSkip:()=>{log('检测到锁定或闯关限制，尝试后续可进入的章节');record('stage','ADAPTER');}});
     else {if(!valid(token)||!playing)return;selectedTarget=next();selectedTarget.click();}return selectedTarget;
@@ -384,7 +384,7 @@
     }
     throw failure('已点击确定但弹题仍显示，请检查网站反馈','CONFIRM');
   }
-  function sameQuestions(a,b){return a.length===b.length&&a.every((q,i)=>q.root===b[i].root&&q.signature===b[i].signature&&q.inputs.length===b[i].inputs.length&&q.inputs.every((input,j)=>input===b[i].inputs[j]));}
+  function sameQuestions(a,b){return a.length===b.length&&a.every((q,i)=>q.root===b[i].root&&q.signature===b[i].signature&&q.scope===b[i].scope&&q.inputs.length===b[i].inputs.length&&q.inputs.every((input,j)=>input===b[i].inputs[j]));}
   async function readyQuestions(token){
     let previous=[],stableAt=Date.now();
     for(let n=0;n<100;n++){
@@ -459,8 +459,8 @@
     const recoveredPickers=new Set();
     for(let n=0;n<60;n++){
       if(!valid(token)||!playing)return null;
-      if(blocked())throw failure('当前资源需要人工处理，连播暂停','MANUAL');
-      if(zhs?.popupComplete()){if(!await zhs.confirmPopup(()=>valid(token)&&playing&&!blocked()))return null;continue;}
+      if(blocked())throw failure(zhs?.stopReason()||'当前资源需要人工处理，连播暂停','MANUAL');
+      if(zhs?.popupComplete()){if(!await zhs.confirmPopup(()=>valid(token)&&playing&&!blocked()))return null;checkpoint.records.clear();continue;}
       const passed=documents().find(doc=>quizDocument(doc)&&!submittedDocs.has(doc)&&globalThis.UoocQuizSubmission?.status(doc,visible));
       if(passed){submittedDocs.add(passed);await UoocQuizSubmission.acknowledge(passed,{visible,allowed:()=>valid(token)&&playing});if(!valid(token))return null;await advance(token);continue;}
       if(globalThis.UoocCatalog?.gateNotice?.()){log('当前小节被闯关规则限制，正在尝试后面的章节');await advance(token,false,true);continue;}
@@ -497,6 +497,7 @@
     cancelBarrier=featureMessage('cancelRequests');featureMessage('timerStop',{run});record(reason==='error'?'error':reason==='timer'?'timer':'pause',lastStopCode);
     if(reason==='error')beepOnce(lastStopCode);renderStats();
   }
+  if(zhs)new MutationObserver(()=>{if((playing||busy)&&zhs.blocked())stop(zhs.stopReason(),'error','MANUAL');}).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style','class','hidden','aria-hidden']});
   function next() {
     const candidates=settings.nextSelector?query(settings.nextSelector):query('button,a,[role=button]').filter(e=>/^(下一节|下一视频|下一课时|下一小节)$/.test(e.innerText.trim()));
     const available=candidates.filter(e=>visible(e)&&!e.disabled&&e.getAttribute('aria-disabled')!=='true');
@@ -526,7 +527,7 @@
   let lastProgress=Date.now(),lastTime=-1,pickerIdleSince=0;
   setInterval(async()=>{const tickToken=epoch;try{
     bind();if(!valid(epoch)||!playing||advancing)return;
-    if(blocked()){stop('遇到考试或验证，请人工处理','error','MANUAL');return;}
+    if(blocked()){stop(zhs?.stopReason()||'遇到考试或验证，请人工处理','error','MANUAL');return;}
     if(globalThis.UoocCatalog?.gateNotice?.()){advancing=true;try{await advance(tickToken,false,true);const v=await loadedVideo(tickToken);if(v)await playVideo(v,tickToken);}finally{if(tickToken===epoch)advancing=false;}return;}
     const pending=questions();
     if(pending.length&&!(!zhs&&inlineVideoFor(pending)&&pending.every(q=>savedQuestions.get(q.root)===q.signature))){advancing=true;try{const v=await loadedVideo(tickToken);if(v&&valid(tickToken)){bind();lastProgress=Date.now();await playVideo(v,tickToken);}}finally{if(tickToken===epoch)advancing=false;}return;}
@@ -542,7 +543,7 @@
   el('copyDiagnostic').onclick=async()=>{try{await navigator.clipboard.writeText(el('diagnosticText').textContent);el('copyDiagnostic').textContent='已复制';}catch{el('copyDiagnostic').textContent='复制受限，请选中文本复制';}};
   el('play').onclick=async()=>{
     if(zhs?.homework()){el('solve').click();return;}if(busy||advancing||playing)return;resumeMode='video';resumeLabels();const token=++epoch;
-    try{if(blocked())throw Error('当前页面需要人工处理');
+    try{if(blocked())throw failure(zhs?.stopReason()||'当前页面需要人工处理','MANUAL');
       playing=true;advancing=true;el('play').disabled=true;prepareAudio();await beginRun(token);if(!valid(token))return;say('正在打开视频资源','VIDEO_LOADING');
       let list=videos();
       if(!list.length && !questions().length && globalThis.UoocCatalog?.available())await advance(token,true);
@@ -576,7 +577,7 @@
       else{
         const result=await requestAnswer(q,token,context);guard();await wait();guard();
         const fresh=questions().find(item=>item.root===q.root);
-        if(!fresh||fresh.signature!==q.signature||fresh.inputs.some((input,i)=>input!==q.inputs[i])||q.inputs.some((i,j)=>(q.payload.type==='blank'?i.value:i.checked)!==initial[j]))throw failure('题目或答案已被修改，已保留页面内容，请继续后核对','PAGE_CHANGED');
+        if(!fresh||fresh.signature!==q.signature||fresh.scope!==q.scope||fresh.inputs.some((input,i)=>input!==q.inputs[i])||q.inputs.some((i,j)=>(q.payload.type==='blank'?i.value:i.checked)!==initial[j]))throw failure('题目或答案已被修改，已保留页面内容，请继续后核对','PAGE_CHANGED');
         answers=result.answers;guessed=!!(result.guessed||result.uncertain);
         for(let i=0;i<q.inputs.length;i++){
           guard();const input=q.inputs[i];if(input.disabled||!input.isConnected)throw failure('选项不可操作','PAGE_CHANGED');
@@ -590,7 +591,7 @@
         }
         if(!matchesAnswer(q,answers))throw failure('答案未成功写入，请检查当前题目','SAVE');
       }
-      checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,answers:[...answers],uncertain:guessed});
+      checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,scope:q.scope,inputs:[...q.inputs],answers:[...answers],uncertain:guessed});
       verified.push({q,answers:[...answers]});progress.filled=n;if(guessed)progress.guessed++;renderProgress();
       guard();if(!matchesAnswer(q,answers))throw failure('答案已变化，未保存','SAVE');
       if(n<total){
@@ -633,11 +634,12 @@
         batch.answers.push(result.answers);
         await wait();if(!runCurrent(token,context))return;
         const fresh=questions().find(x=>x.root===q.root);
-        if(!q.root.isConnected || !fresh || fresh.signature!==q.signature || fresh.inputs.some((input,i)=>input!==q.inputs[i]) || blocked())throw Error('题目页面已变化，停止填写');
-        if(q.inputs.some((input,i)=>(q.payload.type==='blank'?input.value:input.checked)!==initialValues[i])){checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,answers:[...result.answers],uncertain:!!(result.guessed||result.uncertain)});throw Error('模型请求期间页面答案已修改，已保留；点击继续后确认采用页面答案');}
+        if(!q.root.isConnected || !fresh || fresh.signature!==q.signature || fresh.scope!==q.scope || fresh.inputs.some((input,i)=>input!==q.inputs[i]) || blocked())throw Error('题目页面已变化，停止填写');
+        if(q.inputs.some((input,i)=>(q.payload.type==='blank'?input.value:input.checked)!==initialValues[i])){checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,scope:q.scope,inputs:[...q.inputs],answers:[...result.answers],uncertain:!!(result.guessed||result.uncertain)});throw Error('模型请求期间页面答案已修改，已保留；点击继续后确认采用页面答案');}
         q.root.scrollIntoView({behavior:'smooth',block:'center'});
         for(let i=0;i<q.inputs.length;i++){
           if(!valid(token))return;
+          if(q.scope!==undefined&&questions().find(item=>item.root===q.root)?.scope!==q.scope)throw failure('弹题已关闭或重新打开，已停止旧题填写','PAGE_CHANGED');
           const input=q.inputs[i],wanted=result.answers.includes(i);
           if(input.disabled||!input.isConnected)throw Error('选项不可操作');
           if(q.payload.type==='blank'){
@@ -647,12 +649,13 @@
             Object.getOwnPropertyDescriptor(proto,'value').set.call(input,result.answers[i]);
             input.dispatchEvent(new win.Event('input',{bubbles:true}));input.dispatchEvent(new win.Event('change',{bubbles:true}));input.dispatchEvent(new win.Event('blur',{bubbles:true}));
             input.dispatchEvent(new win.MouseEvent('mouseleave',{bubbles:false}));
-          }else if(input.checked!==wanted && (q.payload.type==='multiple'||wanted))input.click();
+          }else if(input.checked!==wanted && (q.payload.type==='multiple'||wanted)){if(q.scope!==undefined)input.click(()=>runCurrent(token,context));else input.click();}
           await sleep(350);if(!runCurrent(token,context))return;
-          if(q.inputs.slice(0,i+1).some((input,j)=>q.payload.type==='blank'?input.value!==result.answers[j]:input.checked!==result.answers.includes(j))){checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,answers:[...result.answers],uncertain:!!(result.guessed||result.uncertain)});throw Error('填写期间页面答案已修改，已保留；请继续并确认页面答案');}
+          if(q.scope!==undefined&&questions().find(item=>item.root===q.root)?.scope!==q.scope)throw failure('弹题已关闭或重新打开，已停止旧题填写','PAGE_CHANGED');
+          if(q.inputs.slice(0,i+1).some((input,j)=>q.payload.type==='blank'?input.value!==result.answers[j]:input.checked!==result.answers.includes(j))){checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,scope:q.scope,inputs:[...q.inputs],answers:[...result.answers],uncertain:!!(result.guessed||result.uncertain)});throw Error('填写期间页面答案已修改，已保留；请继续并确认页面答案');}
         }
         if(q.inputs.some((input,i)=>q.payload.type==='blank'?input.value!==result.answers[i]:input.checked!==result.answers.includes(i)))throw Error('答案未成功写入，请人工核对');
-        checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,answers:[...result.answers],uncertain:!!(result.guessed||result.uncertain)});progress.filled++;if(result.guessed||result.uncertain)progress.guessed++;renderProgress();
+        checkpoint.records.set(q.root,{signature:q.signature,document:q.root.ownerDocument.URL,scope:q.scope,inputs:[...q.inputs],answers:[...result.answers],uncertain:!!(result.guessed||result.uncertain)});progress.filled++;if(result.guessed||result.uncertain)progress.guessed++;renderProgress();
         say(`已填写 ${n+1}/${items.length} 题`,'QUESTION');await wait();
       }
       await readyQuestions(token);if(!valid(token))return null;

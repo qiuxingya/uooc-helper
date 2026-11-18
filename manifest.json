@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "优课学习助手",
-  "version": "2.3.1",
-  "description": "优课、学习通与 AI教学中心学习辅助；智慧树共享课二倍速连播、弹题与普通章节作业 AI 辅助填写保存。",
+  "version": "2.3.2",
+  "description": "优课、学习通与 AI教学中心学习辅助；智慧树共享课网站倍速连播、弹题与普通章节作业 AI 辅助填写保存。",
   "permissions": [
     "storage",
     "alarms"
