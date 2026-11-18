@@ -7,7 +7,7 @@
   const polymas=globalThis.PolymasLearning,zhs=globalThis.ZhihuishuLearning;
   const manualExercises=!!globalThis.ChaoxingLearning||!!polymas;
   let settings = {delay:3,autoExercises:!globalThis.ChaoxingLearning,rate:2,timerMinutes:0,sound:true,autoSubmit:false}, playing=false, busy=false, epoch=0, completed=0, advancing=false,submitting=false;
-  const VERSION=chrome.runtime.getManifest?.().version||'2.3.0';
+  const VERSION=chrome.runtime.getManifest?.().version||'2.3.1';
   const PLATFORM=zhs?.name||polymas?.name||(globalThis.ChaoxingLearning?'学习通':'优课');
   const host=document.createElement('div');host.id='uooc-learning-helper';host.dataset.version=VERSION;
   host.style.cssText='position:fixed;right:18px;bottom:18px;z-index:2147483647';

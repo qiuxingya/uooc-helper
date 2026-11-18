@@ -79,7 +79,14 @@
   for(let n=0;n<30;n++){if(!valid())return false;if(!popup())return true;await new Promise(r=>setTimeout(r,200));}
   throw Object.assign(Error('弹题尚未关闭，请检查网站反馈后继续'),{code:'CONFIRM'});
  }
- const blocked=()=>!UoocPlatforms.study(location.href)||[...document.querySelectorAll('iframe[src*="captcha.gtimg.com"],iframe[src*="captcha.163.com"]')].some(e=>visible(e)&&e.getBoundingClientRect().width>20&&e.getBoundingClientRect().height>20);
+ function challengeVisible(frame){
+  if(!visible(frame))return false;
+  const rect=frame.getBoundingClientRect();
+  if(rect.width<=20||rect.height<=20||rect.bottom<=0||rect.right<=0||rect.top>=innerHeight||rect.left>=innerWidth)return false;
+  for(let node=frame;node;node=node.parentElement){const style=getComputedStyle(node);if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse'||Number(style.opacity)===0)return false;}
+  return true;
+ }
+ const blocked=()=>!UoocPlatforms.study(location.href)||[...document.querySelectorAll('iframe[src*="captcha.gtimg.com"],iframe[src*="captcha.163.com"]')].some(challengeVisible);
  globalThis.ZhihuishuLearning={name:'智慧树',homework,questions,text,number,total,buttons,context,popup,confirmPopup,blocked,popupComplete:()=>popupButton('关闭').length===1&&!!popup()?.querySelector('.answer'),title:()=>document.querySelector('.el-header .source-name,.courseName,.course-name,.courseTitle')?.textContent.trim()||document.querySelector('.examInfo li span[title]')?.textContent.trim()||'',markEnded:()=>{const row=active();if(row)ended.add(key(row));}};
  if(location.hostname===studyHost)globalThis.UoocCatalog={available:()=>rows().length>0,name:()=> '智慧树共享课',context,advance,reset:()=>ended.clear(),picker:()=>false};
 })();

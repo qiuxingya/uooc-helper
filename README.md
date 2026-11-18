@@ -7,12 +7,14 @@
 <p align="center">课程连播 · DeepSeek 辅助答题 · 课程与成绩总览 · 本机登录保持</p>
 
 <p align="center">
-  <img alt="版本" src="https://img.shields.io/badge/version-2.3.0-167C68">
+  <img alt="版本" src="https://img.shields.io/badge/version-2.3.1-167C68">
   <img alt="架构" src="https://img.shields.io/badge/Manifest-V3-286D58">
   <img alt="浏览器" src="https://img.shields.io/badge/browser-Edge%20%7C%20Chrome-426F65">
 </p>
 
 面向优课 UOOC、学习通、POLYMAS AI教学中心与智慧树共享课的桌面浏览器扩展，提供视频连播、倍速、学习统计和课程成绩查看；优课与已适配的智慧树共享课习题支持 DeepSeek 辅助填写。原生 JavaScript 实现，无需安装 Node.js 或执行构建命令即可加载。
+
+**2.3.1 智慧树播放修复**。修复预加载验证码 iframe 在屏幕外且父层透明时被误判为正在验证的问题，恢复默认二倍速与连播。真正显示验证码时继续暂停人工处理。助手仍内置为 1.2.0，保持单 ZIP 交付。另修复 CI 在播放器 iframe 尚未就绪时提前执行测试导致的竞态。
 
 **2.3.0 智慧树共享课与包内更新助手**。内置助手 1.2.0 自动识别安装目录和原有关联，不再单独发布助手 ZIP。接入 `studyvideoh5.zhihuishu.com` 视频页面和已确认的普通章节作业页面：默认二倍速，视频结束续播，弹题自动填写并关闭；章节作业逐题保存，最后一题收到网站保存成功后才显示完成。正式提交由用户确认，考试和验证码暂停人工处理。
 
@@ -38,7 +40,7 @@
 
 **2.0.0 学习通适配版**：接入章节多视频连播、倍速、定时停止、学习统计、独立成绩总览与登录保持开关。学习通可编辑章节测验尚缺真实样例，暂由人工作答和提交；课程与成绩已通过真实账号复测；真实连播与登录检测尚待反馈。原优课答题流程保留。
 
-从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.3.0**。本机助手不会自动覆盖包含新增访问范围的版本。
+从 1.2.0 升级时增加了学习通站点访问范围，需要手动替换原目录、重新加载扩展并确认浏览器权限。更新后刷新课程页，面板应显示 **v2.3.1**。本机助手不会自动覆盖包含新增访问范围的版本。
 
 > 本项目为非官方工具，与优课、学习通及 DeepSeek 无隶属关系。请遵守课程和平台的使用要求。模型可能答错，插件不会保证成绩、绕过闯关验证或伪造学习记录。
 
@@ -58,7 +60,7 @@
 
 以下为当前源码及模拟课程生成的面板预览，不含真实题目、成绩或账号。
 
-<p align="center"><img src="docs/screenshots/latest-2.3.0-zhihuishu-panel.png" width="330" alt="智慧树视频二倍速面板，模拟数据"><img src="docs/screenshots/latest-2.3.0-zhihuishu-homework.png" width="330" alt="智慧树章节作业答题进度，模拟数据"></p>
+<p align="center"><img src="docs/screenshots/latest-2.3.1-zhihuishu-panel.png" width="330" alt="智慧树视频二倍速面板，模拟数据"><img src="docs/screenshots/latest-2.3.0-zhihuishu-homework.png" width="330" alt="智慧树章节作业答题进度，模拟数据"></p>
 
 ## POLYMAS 学习资源入口
 
@@ -140,7 +142,7 @@ AI教学中心、连接与账号及统一登录保持预览由 v2.2.0 当前源�
 
 ### 包内 Windows 自动更新助手
 
-1. 下载并解压 `uooc-helper-2.3.0.zip`，替换浏览器实际加载的插件目录，重新加载扩展。
+1. 下载并解压 `uooc-helper-2.3.1.zip`，替换浏览器实际加载的插件目录，重新加载扩展。
 2. 设置页进入“高级工具 → 版本与更新 → 安装或升级本机助手”，点击“安装／升级本机助手”，运行从插件包取出的安装器。也可直接运行插件目录内 `native-updater/UoocUpdater.exe`。
 3. 助手 1.2.0 自动识别已有关联或 Edge/Chrome 中的插件。确认检测结果后点击安装；多个副本时选择一次，无需输入 ID 或地址。特殊目录可用文件夹选择器，ID 自动计算。
 4. 返回设置页后自动检测已授权连接；首次仍需点击“授权并连接本机助手”。之后按需开启自动安装，默认关闭。
@@ -166,7 +168,7 @@ AI教学中心、连接与账号及统一登录保持预览由 v2.2.0 当前源�
 
 ### 发布者操作
 
-上传与标签、manifest.json 一致的 `uooc-helper-版本.zip`，例如标签 `v2.3.0` 对应 `uooc-helper-2.3.0.zip`。每次发新版本都递增版本号。助手安装器已放入插件 ZIP，不再单独提供助手 ZIP。静态更新客户端还需要正式版中的 `update.json` 和 `SHA256SUMS.txt`。
+上传与标签、manifest.json 一致的 `uooc-helper-版本.zip`，例如标签 `v2.3.1` 对应 `uooc-helper-2.3.1.zip`。每次发新版本都递增版本号。助手安装器已放入插件 ZIP，不再单独提供助手 ZIP。静态更新客户端还需要正式版中的 `update.json` 和 `SHA256SUMS.txt`。
 
 完整GitHub源码包额外包含 `native-updater/`、`tools/build-release.ps1` 和 `.github/workflows/release.yml`。在允许脚本的Windows PowerShell环境可运行构建脚本生成内置助手的单个插件 ZIP、静态清单 `update.json` 和 `SHA256SUMS.txt`。推送v开头标签或手动触发工作流会构建并创建Release草稿／附加安装包；检查附件后再发布，草稿不会被自动更新客户端选中。工作流需要仓库启用Actions，Release上传需要contents写权限。不要把GitHub源码包当作自动安装附件。
 
@@ -241,7 +243,7 @@ Windows 本机助手完成一次关联后，可在这里检查、手动安装或
 
 适用于支持 Manifest V3 的桌面版 Edge 和 Chrome，当前自动化浏览器验证使用 Edge。Firefox、Safari 和移动端浏览器尚未验证。
 
-1. 从 [v2.2.0 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.2.0) 下载 `uooc-helper-2.3.0.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
+1. 从 [v2.3.1 发布页](https://github.com/qiuxingya/uooc-helper/releases/tag/v2.3.1) 下载 `uooc-helper-2.3.1.zip` 并解压。插件单独安装即可使用，本机更新助手是可选组件。
 2. 打开浏览器扩展管理页：Edge 为 `edge://extensions/`，Chrome 为 `chrome://extensions/`。
 3. 开启“开发者模式”，选择“加载解压缩的扩展”。
 4. 选择直接包含 [manifest.json](manifest.json) 的文件夹，**不要选择 ZIP 文件**。
@@ -489,7 +491,7 @@ uooc-helper/
 
 1. 先处理尚未保存的答案，再用新版文件替换扩展原安装目录。
 2. 在扩展管理页点击“重新加载”，随后刷新课程页面；仅下载 ZIP 或仅刷新网页不一定能更新已安装的副本。
-3. 展开悬浮面板，确认顶部版本为 **v2.3.0**。
+3. 展开悬浮面板，确认顶部版本为 **v2.3.1**。
 4. 如果仍显示旧版，检查扩展实际加载目录，不要同时开启多个助手副本。
 
 ## 验证范围与反馈
@@ -504,6 +506,7 @@ uooc-helper/
 
 | 版本 | 主要变化 |
 | --- | --- |
+| 2.3.1 | 智慧树隐藏验证码误判修复；CI 播放器加载等待修复；实际显示的验证仍暂停人工处理 |
 | 2.3.0 | 智慧树共享课二倍速、弹题及作业保存；内置助手 1.2.0 自动关联，单 ZIP 交付；正式交卷与验证人工处理 |
 | 2.2.0 | POLYMAS 视频学习、智能体课程成绩总览及登录保持；公布保护、班级学期隔离与失败恢复；习题仍待适配 |
 | 2.1.7 | 课程名与概览恢复、课程成绩管理、失败课重试，以及残留弹题干扰保存的修复 |
@@ -524,7 +527,7 @@ uooc-helper/
 | 0.9.0 | 拖动悬浮球、倍速、定时、学习统计、诊断与备份 |
 | 0.8.1 | 免密码的 API Key 本机加密保存 |
 
-2.3.0 的智慧树范围、真实页面检查与模拟回归见 [本版验证记录](docs/validation-2.3.0.md)。2.2.0 AI教学中心适配见 [2.2.0 验证记录](docs/validation-2.2.0.md)。此前 2.1.7 的课程名称、学习概览和成绩快照恢复见 [2.1.7 验证记录](docs/validation-2.1.7.md)。此前版本见 [2.1.6](docs/validation-2.1.6.md)、[2.1.5](docs/validation-2.1.5.md)、[2.1.4](docs/validation-2.1.4.md)、[2.1.3](docs/validation-2.1.3.md)、[2.1.2](docs/validation-2.1.2.md)、[2.1.1](docs/validation-2.1.1.md)、[2.1.0](docs/validation-2.1.0.md)、[2.0.1](docs/validation-2.0.1.md) 和 [2.0.0](docs/validation-2.0.0.md) 验证记录。
+2.3.1 播放误判修复与验证见 [本版验证记录](docs/validation-2.3.1.md)。智慧树初始适配见 [2.3.0 验证记录](docs/validation-2.3.0.md)。2.2.0 AI教学中心适配见 [2.2.0 验证记录](docs/validation-2.2.0.md)。此前 2.1.7 的课程名称、学习概览和成绩快照恢复见 [2.1.7 验证记录](docs/validation-2.1.7.md)。此前版本见 [2.1.6](docs/validation-2.1.6.md)、[2.1.5](docs/validation-2.1.5.md)、[2.1.4](docs/validation-2.1.4.md)、[2.1.3](docs/validation-2.1.3.md)、[2.1.2](docs/validation-2.1.2.md)、[2.1.1](docs/validation-2.1.1.md)、[2.1.0](docs/validation-2.1.0.md)、[2.0.1](docs/validation-2.0.1.md) 和 [2.0.0](docs/validation-2.0.0.md) 验证记录。
 
 ## 开发与验证
 
@@ -532,7 +535,7 @@ uooc-helper/
 
 使用 Node.js 24 与桌面 Edge，运行 `npm install --ignore-scripts` 安装测试依赖，再运行 `npm test`。测试使用独立模拟页面与接口，不使用真实账号、真实 Key 或付费请求；截图写入已忽略的 `.test-artifacts/`。GitHub Actions 的稳定性回归使用同一入口。
 
-打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.3.0`，生成内置助手的插件 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录。
+打包运行 `./tools/build-release.ps1 -RepositoryRoot . -OutDirectory dist -ReleaseTag v2.3.1`，生成内置助手的插件 ZIP、`update.json` 与 `SHA256SUMS.txt`。安装时选择解压后的独立插件目录。
 
 ### 弹窗内更新
 
@@ -548,7 +551,7 @@ uooc-helper/
 
 插件与本机助手改为读取最新正式版中的 update.json，日常查询不再消耗 GitHub REST API 匿名额度。仍依赖 GitHub 网络，保留缓存、SHA-256 校验与回滚；未增加数字签名。
 
-历史 2.1.2 首次迁移需要助手 1.1.0；当前 2.3.0 请运行包内 1.2.0 安装器自动检测绑定，并授权 GitHub 下载域名。之后可继续在插件弹窗内检查和更新。发布时必须提供 update.json；缺失时提示手动升级，不回退 API。详见 RELEASE_NOTES.md。
+历史 2.1.2 首次迁移需要助手 1.1.0；当前 2.3.1 请运行包内 1.2.0 安装器自动检测绑定，并授权 GitHub 下载域名。之后可继续在插件弹窗内检查和更新。发布时必须提供 update.json；缺失时提示手动升级，不回退 API。详见 RELEASE_NOTES.md。
 
 ### 2.1.3 按钮预览（模拟数据）
 
